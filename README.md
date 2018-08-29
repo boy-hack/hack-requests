@@ -1,5 +1,5 @@
 # hack-requests
-hack-requests 是一个给黑客们使用的http底层网络库python3.目前还在开发中。
+hack-requests 是一个给黑客们使用的http底层网络库,基于python3.目前还在开发中。
 
 ## 我的想法
 我的想法很简单，`hack-requests`既可以像`requests`模块一样好用而且也提供返回底层的请求包、返回包提供参考。所以列了一个列表，期待完成这个网络库~
