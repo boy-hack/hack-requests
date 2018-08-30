@@ -137,6 +137,14 @@ class hackRequests(object):
                 path = path + "?" + p.query
         return scheme, hostname, port, path
 
+    def _send_output(self, oldfun, con, log):
+        def _send_output_hook(*args, **kwargs):
+            log['request'] = b"\r\n".join(con._buffer)
+            log['request'] = log["request"].decode('utf-8')
+            oldfun(*args, **kwargs)
+            con._send_output = oldfun
+        return _send_output_hook
+
     def http(self, url, post=None, **kwargs):
         '''
 
@@ -153,12 +161,25 @@ class hackRequests(object):
         headers = kwargs.get('headers', {})
         if isinstance(headers, str):
             headers = extract_dict(headers.strip(), '\n', ': ')
+        cookie = kwargs.get("cookie", None)
+        if cookie:
+            cookiestr = cookie
+            if isinstance(cookie, dict):
+                cookiestr = ""
+                for k, v in cookie.items():
+                    cookiestr += "{}={}; ".format(k, v)
+                cookiestr = cookiestr.strip("; ")
+            headers["Cookie"] = cookiestr
         for arg_key, h in [
-            ('cookie', 'Cookie'),
             ('referer', 'Referer'),
                 ('user_agent', 'User-Agent'), ]:
             if kwargs.get(arg_key):
                 headers[h] = kwargs.get(arg_key)
+
+        urlinfo = scheme, host, port, path = self._get_urlinfo(url)
+        log = {}
+        conn = self.httpcon.get_con(urlinfo, proxy=proxy)
+        conn._send_output = self._send_output(conn._send_output, conn, log)
         if post:
             method = "POST"
             if isinstance(post, str):
@@ -166,10 +187,7 @@ class hackRequests(object):
             post = parse.urlencode(post)
             headers["Content-type"] = "application/x-www-form-urlencoded"
             headers["Accept"] = "text/plain"
-
-        urlinfo = scheme, host, port, path = self._get_urlinfo(url)
-        conn = self.httpcon.get_con(urlinfo, proxy=proxy)
-
+            log["request"] += "\r\n\r\n" + post
         tmp_headers = copy.deepcopy(headers)
         tmp_headers['Accept-Encoding'] = 'gzip, deflate'
         tmp_headers['Connection'] = 'Keep-Alive'
@@ -179,34 +197,46 @@ class hackRequests(object):
         conn.request(method, path, post, tmp_headers)
         rep = conn.getresponse()
         body = rep.read()
+        log["response"] = "HTTP/%.1f %d %s" % (
+            rep.version * 0.1, rep.status,
+            rep.reason) + '\r\n' + str(rep.msg)
 
         redirect = rep.msg.get('location', None)  # handle 301/302
         if redirect and location and locationcount < 10:
             if not redirect.startswith('http'):
                 redirect = parse.urljoin(url, redirect)
-            print(redirect)
-            return self.http(redirect, post=None, method=method, location=True, locationcount=locationcount + 1)
+            return self.http(redirect, post=None, method=method, headers=tmp_headers,location=True, locationcount=locationcount + 1)
 
         if not redirect:
             redirect = url
-        return response(rep, redirect, body)
+        log["url"] = redirect
+        return response(rep, redirect, body, log)
 
 
 class response(object):
 
-    def __init__(self, rep, redirect, body):
+    def __init__(self, rep, redirect, body, log):
         self.rep = rep
         self.body = body
         self.status_code = self.rep.status      # response code
         self.url = redirect
 
         _header_dict = dict()
+        self.cookie = ""
         for k, v in self.rep.getheaders():
             _header_dict[k] = v
+            # handle cookie
+            if k == "Set-Cookie":
+                if ";" in v:
+                    self.cookie += v.strip().split(";")[0] + "; "
+                else:
+                    self.cookie = v.strip() + "; "
+        self.cookie = self.cookie.rstrip("; ")
         self.headers = _header_dict
         self.header = self.rep.msg              # response header
         self.log = {}                           # response log
         self.charset = ""                       # response encoding
+        self.log = log
         charset = self.rep.msg.get('content-type', 'utf-8')
         try:
             self.charset = charset.split("charset=")[1]
@@ -224,7 +254,6 @@ class response(object):
             except:
                 body = zlib.decompress(body)
         # redirect = self.rep.msg.get('location', None)   # handle 301/302
-
         return body
 
     def text(self):
@@ -238,6 +267,7 @@ class response(object):
             text = body.decode(self.charset, 'ignore')
         except:
             text = str(body)
+        self.log["response"] += '\r\n' + text[:4096]
         return text
 
 
