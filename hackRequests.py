@@ -18,10 +18,12 @@ class Compatibleheader(str):
     def get(self, key, d=None):
         return self.dict.get(key, d)
 
-def extract_dict(text,sep,sep2 = "="):
+
+def extract_dict(text, sep, sep2="="):
     """根据分割方式将字符串分割为字典"""
     _dict = dict([l.split(sep2, 1) for l in text.split(sep)])
     return _dict
+
 
 class httpconpool(object):
     '''
@@ -35,6 +37,13 @@ class httpconpool(object):
         self.connectpool = collections.OrderedDict()   # 空闲连接池
         self.lock = Lock()
         self._get_protocol()
+
+    def __del__(self):
+        self.lock.acquire()
+        for k, v in self.connectpool.items():
+            v.close()
+        del self.connectpool
+        self.lock.release()
 
     def _get_protocol(self):
         if not self.protocol:
@@ -54,7 +63,10 @@ class httpconpool(object):
         self.lock.release()
 
         if conhash in self.connectpool:
-            return self.connectpool[conhash]
+            conn = self.connectpool[conhash]
+            if not getattr(conn, 'sock', None):  # AppEngine might not have  `.sock`
+                conn.connect()
+            return conn
 
         if len_connect > self.maxconnectpool:
             self.release()
@@ -135,10 +147,12 @@ class hackRequests(object):
         method = kwargs.get("method", "GET")
 
         location = kwargs.get('location', True)
+        locationcount = kwargs.get("locationcount", 0)
+
         proxy = kwargs.get('proxy', None)
         headers = kwargs.get('headers', {})
-        if isinstance(headers,str):
-            headers = extract_dict(headers.strip(),'\n',': ')
+        if isinstance(headers, str):
+            headers = extract_dict(headers.strip(), '\n', ': ')
         for arg_key, h in [
             ('cookie', 'Cookie'),
             ('referer', 'Referer'),
@@ -163,14 +177,28 @@ class hackRequests(object):
             'User-Agent') else 'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/46.0.2490.71 Safari/537.36'
 
         conn.request(method, path, post, tmp_headers)
-        return response(conn)
+        rep = conn.getresponse()
+        body = rep.read()
+
+        redirect = rep.msg.get('location', None)  # handle 301/302
+        if redirect and location and locationcount < 10:
+            if not redirect.startswith('http'):
+                redirect = parse.urljoin(url, redirect)
+            print(redirect)
+            return self.http(redirect, post=None, method=method, location=True, locationcount=locationcount + 1)
+
+        if not redirect:
+            redirect = url
+        return response(rep, redirect, body)
 
 
 class response(object):
 
-    def __init__(self, conn):
-        self.rep = conn.getresponse()
+    def __init__(self, rep, redirect, body):
+        self.rep = rep
+        self.body = body
         self.status_code = self.rep.status      # response code
+        self.url = redirect
 
         _header_dict = dict()
         for k, v in self.rep.getheaders():
@@ -178,7 +206,7 @@ class response(object):
         self.headers = _header_dict
         self.header = self.rep.msg              # response header
         self.log = {}                           # response log
-        self.charset = ""                      # response encoding
+        self.charset = ""                       # response encoding
         charset = self.rep.msg.get('content-type', 'utf-8')
         try:
             self.charset = charset.split("charset=")[1]
@@ -187,7 +215,7 @@ class response(object):
 
     def content(self):
         encode = self.rep.msg.get('content-encoding', None)
-        body = self.rep.read()
+        body = self.body
         if encode == 'gzip':
             body = gzip.decompress(body)
         elif encode == 'deflate':
@@ -195,7 +223,7 @@ class response(object):
                 body = zlib.decompress(body, -zlib.MAX_WBITS)
             except:
                 body = zlib.decompress(body)
-        redirect = self.rep.msg.get('location', None)   # handle 301/302
+        # redirect = self.rep.msg.get('location', None)   # handle 301/302
 
         return body
 
@@ -214,7 +242,4 @@ class response(object):
 
 
 if __name__ == '__main__':
-    hack = hackRequests()
-    u = "http://www.hacking8.com/"
-    p = hack.http(u)
-    print(p.header)
+    pass
