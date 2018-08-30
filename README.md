@@ -17,25 +17,46 @@ hack-requests 是一个给黑客们使用的http底层网络库,基于python3.�
 ### 快速使用
 
 ```python
-from hackRequests import hackRequests
-
 hack = hackRequests()
-url = "http://www.hacking8.com"
-u = hack.http(url)
-print(u.header)
+url = "http://www.baidu.com/index.php"
+headers = '''
+Connection: keep-alive
+Cache-Control: max-age=0
+Upgrade-Insecure-Requests: 1
+User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/68.0.3440.106 Safari/537.36
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8
+Accept-Encoding: gzip, deflate
+Accept-Language: zh-CN,zh;q=0.9,en;q=0.8
+
+'''
+u = hack.http(url,method="HEAD",headers=headers)
+print(u.log.get("request"))
+print()
+print(u.log.get("response"))
 ```
 
 返回
 
 ```python
-Server: nginx
-Date: Thu, 30 Aug 2018 02:23:55 GMT
+HEAD /index.php HTTP/1.1
+Host: www.baidu.com
+Connection: Keep-Alive
+Cache-Control: max-age=0
+Upgrade-Insecure-Requests: 1
+User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/68.0.3440.106 Safari/537.36
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8
+Accept-Encoding: gzip, deflate
+Accept-Language: zh-CN,zh;q=0.9,en;q=0.8
+
+HTTP/1.1 200 OK
+Cache-Control: private, no-cache, no-store, proxy-revalidate, no-transform
+Connection: Keep-Alive
+Content-Encoding: gzip
 Content-Type: text/html
-Content-Length: 580
-Last-Modified: Thu, 16 Aug 2018 09:50:56 GMT
-Connection: keep-alive
-ETag: "5b754900-244"
-Accept-Ranges: bytes
+Date: Thu, 30 Aug 2018 09:55:53 GMT
+Last-Modified: Mon, 13 Jun 2016 02:50:04 GMT
+Pragma: no-cache
+Server: bfe/1.0.8.18
 ```
 
 使用`hack.http()`可以填写下列参数，当然，除了`url`参数外都不是必须的。
