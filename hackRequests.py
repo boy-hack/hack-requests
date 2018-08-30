@@ -18,6 +18,11 @@ class Compatibleheader(str):
     def get(self, key, d=None):
         return self.dict.get(key, d)
 
+def extract_dict(text,sep,sep2 = "="):
+    """根据分割方式将字符串分割为字典"""
+    _dict = dict([l.split(sep2, 1) for l in text.split(sep)])
+    return _dict
+
 class httpconpool(object):
     '''
     HTTP连接池
@@ -41,9 +46,9 @@ class httpconpool(object):
                 if pa:
                     self.protocol.append(pa)
 
-    def get_con(self,url,proxy = None):
-        scheme,host,port,path = url
-        conhash = "{}_{}_{}".format(scheme,host,port)
+    def get_con(self, url, proxy=None):
+        scheme, host, port, path = url
+        conhash = "{}_{}_{}".format(scheme, host, port)
         self.lock.acquire()
         len_connect = len(self.connectpool)
         self.lock.release()
@@ -53,19 +58,20 @@ class httpconpool(object):
 
         if len_connect > self.maxconnectpool:
             self.release()
-        conn = self._make_con(scheme,host,port,proxy)
+        conn = self._make_con(scheme, host, port, proxy)
         self.lock.acquire()
         self.connectpool[conhash] = conn
         self.lock.release()
         return conn
 
-    def _make_con(self,scheme,host,port,proxy=None):
+    def _make_con(self, scheme, host, port, proxy=None):
         if "https" != scheme:
             if proxy:
-                con = client.HTTPConnection(proxy[0],proxy[1],timeout=self.timeout)
-                con.set_tunnel(host,port)
+                con = client.HTTPConnection(
+                    proxy[0], int(proxy[1]), timeout=self.timeout)
+                con.set_tunnel(host, port)
             else:
-                con = client.HTTPConnection(host,port,timeout=self.timeout)
+                con = client.HTTPConnection(host, port, timeout=self.timeout)
             # con.connect()
             return con
         for p in self.protocol:
@@ -87,7 +93,7 @@ class httpconpool(object):
 
     def release(self):
         self.lock.acquire()
-        k,v = self.connectpool.popitem()
+        k, v = self.connectpool.popitem()
         v.close()
         self.lock.release()
 
@@ -103,7 +109,7 @@ class hackRequests(object):
         self.encoding = ""
         self.httpcon = httpconpool()
 
-    def _get_urlinfo(self,url):
+    def _get_urlinfo(self, url):
         p = parse.urlparse(url)
         scheme = p.scheme.lower()
         if scheme != "http" and scheme != "https":
@@ -111,15 +117,15 @@ class hackRequests(object):
         hostname = p.netloc
         port = 80 if scheme == "http" else 443
         if ":" in hostname:
-            hostname,name = hostname.split(":")
+            hostname, name = hostname.split(":")
         path = ""
         if p.path:
             path = p.path
             if p.query:
                 path = path + "?" + p.query
-        return scheme,hostname,port,path
+        return scheme, hostname, port, path
 
-    def http(self,url,post=None,**kwargs):
+    def http(self, url, post=None, **kwargs):
         '''
 
         :param url:
@@ -127,20 +133,28 @@ class hackRequests(object):
         :return:
         '''
         method = kwargs.get("method", "GET")
-        if post is not None:
-            method = "POST"
+
         location = kwargs.get('location', True)
         proxy = kwargs.get('proxy', None)
         headers = kwargs.get('headers', {})
+        if isinstance(headers,str):
+            headers = extract_dict(headers.strip(),'\n',': ')
         for arg_key, h in [
             ('cookie', 'Cookie'),
             ('referer', 'Referer'),
-            ('user_agent', 'User-Agent'), ]:
+                ('user_agent', 'User-Agent'), ]:
             if kwargs.get(arg_key):
                 headers[h] = kwargs.get(arg_key)
+        if post:
+            method = "POST"
+            if isinstance(post, str):
+                post = extract_dict(post, sep="&")
+            post = parse.urlencode(post)
+            headers["Content-type"] = "application/x-www-form-urlencoded"
+            headers["Accept"] = "text/plain"
 
         urlinfo = scheme, host, port, path = self._get_urlinfo(url)
-        conn = self.httpcon.get_con(urlinfo,proxy=proxy)
+        conn = self.httpcon.get_con(urlinfo, proxy=proxy)
 
         tmp_headers = copy.deepcopy(headers)
         tmp_headers['Accept-Encoding'] = 'gzip, deflate'
@@ -148,18 +162,18 @@ class hackRequests(object):
         tmp_headers['User-Agent'] = tmp_headers['User-Agent'] if tmp_headers.get(
             'User-Agent') else 'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/46.0.2490.71 Safari/537.36'
 
-        conn.request(method,path,post,tmp_headers)
+        conn.request(method, path, post, tmp_headers)
         return response(conn)
 
 
 class response(object):
 
-    def __init__(self,conn):
+    def __init__(self, conn):
         self.rep = conn.getresponse()
         self.status_code = self.rep.status      # response code
 
         _header_dict = dict()
-        for k,v in self.rep.getheaders():
+        for k, v in self.rep.getheaders():
             _header_dict[k] = v
         self.headers = _header_dict
         self.header = self.rep.msg              # response header
@@ -170,8 +184,6 @@ class response(object):
             self.charset = charset.split("charset=")[1]
         except:
             self.charset = "utf-8"
-
-
 
     def content(self):
         encode = self.rep.msg.get('content-encoding', None)
@@ -194,9 +206,8 @@ class response(object):
         '''
         body = self.content()
 
-
         try:
-            text = body.decode(self.charset,'ignore')
+            text = body.decode(self.charset, 'ignore')
         except:
             text = str(body)
         return text
@@ -204,9 +215,6 @@ class response(object):
 
 if __name__ == '__main__':
     hack = hackRequests()
-    u = "http://www.baidu.com"
+    u = "http://www.hacking8.com/"
     p = hack.http(u)
     print(p.header)
-
-
-
