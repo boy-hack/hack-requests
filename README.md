@@ -5,7 +5,7 @@ hack-requests 是一个给黑客们使用的http底层网络库,基于python3.�
 我的想法很简单，`hack-requests`既可以像`requests`模块一样好用而且也提供底层的请求包、返回包。所以列了一个列表，期待完成这个网络库~
 - [x] 像requests一样好用的设计
 - [x] 提供接口获得底层请求包、返回包原文，方便下一步分析
-- [ ] 支持发送HTTP原始报文，支持从Burp Suite等抓包软件中重放
+- [x] 支持发送HTTP原始报文，支持从Burp Suite等抓包软件中重放
 - [ ] hack-requests内部使用连接池、线程池等技术，hack-requests会用最快的方式获取响应数据。使大量I/O密集型操作无需关注这些细节
 - [x] hack-requests是单文件模块，可方便移植到其他项目中。
 

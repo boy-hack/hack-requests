@@ -145,6 +145,40 @@ class hackRequests(object):
             con._send_output = oldfun
         return _send_output_hook
 
+    def httpraw(self, raw: str, ssl:bool = False,proxy = None,location = True):
+        raw = raw.strip()
+        # oneline = raw.readline()
+        # print(oneline)
+        raws = raw.splitlines()
+        try:
+            method, path, protocol = raws[0].split(" ")
+        except:
+            raise
+        post = None
+        if method == "POST":
+            index = 0
+            for i in raws:
+                index += 1
+                if i.strip() == "":
+                    break
+            if len(raws) == index:
+                raise Exception
+            d = raws[1:index-1]
+            d = extract_dict('\n'.join(d), '\n', ": ")
+            post = raws[index]
+
+        else:
+            d = extract_dict('\n'.join(raws[1:]),'\n',": ")
+        netloc = "http" if not ssl else "https"
+        host = d.get("Host",None)
+        if host is None:
+            raise Exception
+        del d["Host"]
+        url = "{}://{}".format(netloc,host + path)
+        return self.http(url,post=post,headers=d,proxy=proxy,location=location)
+
+
+
     def http(self, url, post=None, **kwargs):
         '''
 
@@ -185,9 +219,8 @@ class hackRequests(object):
             if isinstance(post, str):
                 post = extract_dict(post, sep="&")
             post = parse.urlencode(post)
-            headers["Content-type"] = "application/x-www-form-urlencoded"
+            headers["Content-type"] = kwargs.get("Content-type","application/x-www-form-urlencoded")
             headers["Accept"] = "text/plain"
-            log["request"] += "\r\n\r\n" + post
         tmp_headers = copy.deepcopy(headers)
         tmp_headers['Accept-Encoding'] = 'gzip, deflate'
         tmp_headers['Connection'] = 'Keep-Alive'
@@ -197,6 +230,8 @@ class hackRequests(object):
         conn.request(method, path, post, tmp_headers)
         rep = conn.getresponse()
         body = rep.read()
+        if post:
+            log["request"] += "\r\n\r\n" + post
         log["response"] = "HTTP/%.1f %d %s" % (
             rep.version * 0.1, rep.status,
             rep.reason) + '\r\n' + str(rep.msg)
