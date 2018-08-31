@@ -1,11 +1,14 @@
 from http import client
 from urllib import parse
 from threading import Lock
+import threading
 import ssl
 import collections
 import copy
 import gzip
 import zlib
+import time
+import queue
 
 
 class Compatibleheader(str):
@@ -145,7 +148,7 @@ class hackRequests(object):
             con._send_output = oldfun
         return _send_output_hook
 
-    def httpraw(self, raw: str, ssl:bool = False,proxy = None,location = True):
+    def httpraw(self, raw: str, ssl: bool = False, proxy=None, location=True):
         raw = raw.strip()
         # oneline = raw.readline()
         # print(oneline)
@@ -168,18 +171,16 @@ class hackRequests(object):
             post = raws[index]
 
         else:
-            d = extract_dict('\n'.join(raws[1:]),'\n',": ")
+            d = extract_dict('\n'.join(raws[1:]), '\n', ": ")
         netloc = "http" if not ssl else "https"
-        host = d.get("Host",None)
+        host = d.get("Host", None)
         if host is None:
             raise Exception
         del d["Host"]
-        url = "{}://{}".format(netloc,host + path)
-        return self.http(url,post=post,headers=d,proxy=proxy,location=location)
+        url = "{}://{}".format(netloc, host + path)
+        return self.http(url, post=post, headers=d, proxy=proxy, location=location)
 
-
-
-    def http(self, url, post=None, **kwargs):
+    def http(self, url, **kwargs):
         '''
 
         :param url:
@@ -187,7 +188,7 @@ class hackRequests(object):
         :return:
         '''
         method = kwargs.get("method", "GET")
-
+        post = kwargs.get("post", None)
         location = kwargs.get('location', True)
         locationcount = kwargs.get("locationcount", 0)
 
@@ -219,7 +220,8 @@ class hackRequests(object):
             if isinstance(post, str):
                 post = extract_dict(post, sep="&")
             post = parse.urlencode(post)
-            headers["Content-type"] = kwargs.get("Content-type","application/x-www-form-urlencoded")
+            headers["Content-type"] = kwargs.get(
+                "Content-type", "application/x-www-form-urlencoded")
             headers["Accept"] = "text/plain"
         tmp_headers = copy.deepcopy(headers)
         tmp_headers['Accept-Encoding'] = 'gzip, deflate'
@@ -240,7 +242,7 @@ class hackRequests(object):
         if redirect and location and locationcount < 10:
             if not redirect.startswith('http'):
                 redirect = parse.urljoin(url, redirect)
-            return self.http(redirect, post=None, method=method, headers=tmp_headers,location=True, locationcount=locationcount + 1)
+            return self.http(redirect, post=None, method=method, headers=tmp_headers, location=True, locationcount=locationcount + 1)
 
         if not redirect:
             redirect = url
@@ -304,6 +306,73 @@ class response(object):
             text = str(body)
         self.log["response"] += '\r\n' + text[:4096]
         return text
+
+
+class threadpool:
+
+    def __init__(self, threadnum, callback):
+        self.thread_count = self.thread_nums = threadnum
+        self.queue = queue.Queue()
+        self.hack = hackRequests()
+        self.isContinue = True
+        self.thread_count_lock = threading.Lock()
+        self.thread_lock = threading.Lock()
+        self._callback = callback
+
+    def push(self, payload):
+        self.queue.put(payload)
+
+    def changeThreadCount(self, num):
+        self.thread_count_lock.acquire()
+        self.thread_count += num
+        self.thread_count_lock.release()
+
+    def run(self):
+        th = []
+        for i in range(self.thread_nums):
+            t = threading.Thread(target=self.scan)
+            t.setDaemon(True)
+            t.start()
+            th.append(t)
+
+        # It can quit with Ctrl-C
+        while 1:
+            if self.thread_count > 0 and self.isContinue:
+                time.sleep(0.01)
+            else:
+                break
+
+    def http(self, url, **kwargs):
+        func = self.hack.http
+        self.queue.put({"func": func, "url": url, "kw": kwargs})
+        # self.push(func,url,post,kwargs)
+
+    def httpraw(self, raw: str, ssl: bool = False, proxy=None, location=True):
+        func = self.hack.httpraw
+        # self.push(func,raw,ssl,proxy,location)
+        self.queue.put({"func": func, "raw": raw, "ssl": ssl,
+                        "proxy": proxy, "location": location})
+        # self.queue.put(func,raw,ssl,proxy,location)
+
+    def scan(self):
+        while 1:
+            if self.queue.qsize() > 0 and self.isContinue:
+                p = self.queue.get()
+            else:
+                break
+
+            func = p.get("func")
+            url = p.get("url", None)
+            self.thread_lock.acquire()
+            if url is None:
+                h = func(p.get("raw"), p.get("ssl"),
+                         p.get("proxy"), p.get("location"))
+            else:
+                h = func(url, **p.get("kw"))
+            self.thread_lock.release()
+            self._callback(h)
+
+        self.changeThreadCount(-1)
 
 
 if __name__ == '__main__':
