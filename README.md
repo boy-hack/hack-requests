@@ -50,7 +50,7 @@ print(uu.text())
 
 ```
 
-## 提供底层包分析
+### 提供底层包分析
 
 `hackRequests`返回结果中带有`log`参数，记录了`request`和`response`，在写扫描器的时候这两个参数参考非常重要。
 
@@ -100,7 +100,7 @@ ETag: "5b754900-244"
 Accept-Ranges: bytes
 ```
 
-## BurpSuite 重放
+### BurpSuite 重放
 
 支持直接将代理抓包软件中的请求
 
@@ -123,7 +123,7 @@ hh = hack.httpraw(raw)
 print(hh.text())
 ```
 
-## 内置线程池
+### 内置线程池
 
 在并发网络访问方面，hackRequests可以帮助您把网络并发优化到极致。 
 
@@ -252,7 +252,7 @@ threadpool.run()
 | httpraw() | 见[说明文档]-[快速使用] | 将HTTP请求后加入现成队列，准备执行 |
 | stop()    |                         | 停止线程池                         |
 | run()     |                         | 启动线程池                         |
-
+回调函数参数r是response类，见[说明文档]-[response]
 ## Thx
 
 [https://github.com/BugScanTeam/hackhttp](https://github.com/BugScanTeam/hackhttp)
