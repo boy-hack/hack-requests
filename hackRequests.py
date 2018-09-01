@@ -358,7 +358,9 @@ class threadpool:
         self.thread_count_lock.release()
 
     def stop(self):
-        pass
+        self.thread_lock.acquire()
+        self.isContinue = False
+        self.thread_lock.release()
 
     def run(self):
         th = []
@@ -369,11 +371,14 @@ class threadpool:
             th.append(t)
 
         # It can quit with Ctrl-C
-        while 1:
-            if self.thread_count > 0 and self.isContinue:
-                time.sleep(0.01)
-            else:
-                break
+        try:
+            while 1:
+                if self.thread_count > 0 and self.isContinue:
+                    time.sleep(0.01)
+                else:
+                    break
+        except KeyboardInterrupt:
+            exit("User Quite")
 
     def http(self, url, **kwargs):
         func = self.hack.http
