@@ -243,7 +243,7 @@ for i in range(50):
     threadpool.http(url)
 threadpool.run()
 ```
-
+回调函数参数r是response类，见[说明文档]-[response]  
 在声明一个线程池为`threadpool`后，有以下三种方法可以调用
 
 | 方法名    | 传入参数                | 功能                               |
@@ -252,7 +252,6 @@ threadpool.run()
 | httpraw() | 见[说明文档]-[快速使用] | 将HTTP请求后加入现成队列，准备执行 |
 | stop()    |                         | 停止线程池                         |
 | run()     |                         | 启动线程池                         |
-回调函数参数r是response类，见[说明文档]-[response]
 
 ## Thx
 
