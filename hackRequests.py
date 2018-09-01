@@ -1,3 +1,9 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+# @Author   :   w8ay
+# @Mail     :   w8ay@qq.com
+# @File     :   hackRequests.py
+
 from http import client
 from urllib import parse
 from threading import Lock
@@ -23,14 +29,30 @@ class Compatibleheader(str):
 
 
 def extract_dict(text, sep, sep2="="):
-    """根据分割方式将字符串分割为字典"""
+    """根据分割方式将字符串分割为字典
+    Args:
+        text: 分割的文本
+        sep: 分割的第一个字符 一般为'\n'
+        sep2: 分割的第二个字符，默认为'='
+    Return:
+        返回一个dict类型，key为sep2的第0个位置，value为sep2的第一个位置
+
+        只能将文本转换为字典，若text为其他类型则会出错
+    """
     _dict = dict([l.split(sep2, 1) for l in text.split(sep)])
     return _dict
 
 
 class httpconpool(object):
     '''
-    HTTP连接池
+    httpconpool是http连接池。
+
+    所有http请求的tcp连接都会在这里缓存，通过对url解析出hash字串，若hash字串相匹配，则可以进行TCP复用，节省TCP连接的时间。
+    连接池默认缓存20条连接，若连接超出，则按照先来后到的顺序踢出连接。
+
+    Attributes:
+        maxconnectpool: 连接池大小
+        timeout: 超时时间
     '''
 
     def __init__(self, maxconnectpool=20, timeout=10):
@@ -58,6 +80,11 @@ class httpconpool(object):
                 if pa:
                     self.protocol.append(pa)
 
+    '''
+    得到一个连接
+    
+    这是连接池中最重要的一个参数，连接生成、复用相关操作都在这
+    '''
     def get_con(self, url, proxy=None):
         scheme, host, port, path = url
         conhash = "{}_{}_{}".format(scheme, host, port)
@@ -114,15 +141,23 @@ class httpconpool(object):
 
 
 class hackRequests(object):
+    '''
+    hackRequests是主要http请求函数。
 
-    def __init__(self):
+    可以通过http或者httpraw来访问网络
+    '''
+    def __init__(self,conpool = None):
         self.status_code = 0
         self.content = b''
         self.text = ""
         self.headers = {}
         self.log = {}
         self.encoding = ""
-        self.httpcon = httpconpool()
+
+        if conpool is None:
+            self.httpcon = httpconpool(maxconnectpool=20, timeout=10)
+        else:
+            self.httpcon = conpool
 
     def _get_urlinfo(self, url):
         p = parse.urlparse(url)
@@ -150,8 +185,6 @@ class hackRequests(object):
 
     def httpraw(self, raw: str, ssl: bool = False, proxy=None, location=True):
         raw = raw.strip()
-        # oneline = raw.readline()
-        # print(oneline)
         raws = raw.splitlines()
         try:
             method, path, protocol = raws[0].split(" ")
@@ -181,12 +214,6 @@ class hackRequests(object):
         return self.http(url, post=post, headers=d, proxy=proxy, location=location)
 
     def http(self, url, **kwargs):
-        '''
-
-        :param url:
-        :param post:
-        :return:
-        '''
         method = kwargs.get("method", "GET")
         post = kwargs.get("post", None)
         location = kwargs.get('location', True)
