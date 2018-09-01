@@ -156,7 +156,7 @@ class hackRequests(object):
         try:
             method, path, protocol = raws[0].split(" ")
         except:
-            raise
+            raise Exception("Protocol format error")
         post = None
         if method == "POST":
             index = 0
@@ -213,7 +213,10 @@ class hackRequests(object):
 
         urlinfo = scheme, host, port, path = self._get_urlinfo(url)
         log = {}
-        conn = self.httpcon.get_con(urlinfo, proxy=proxy)
+        try:
+            conn = self.httpcon.get_con(urlinfo, proxy=proxy)
+        except:
+            raise
         conn._send_output = self._send_output(conn._send_output, conn, log)
         if post:
             method = "POST"
@@ -327,6 +330,9 @@ class threadpool:
         self.thread_count += num
         self.thread_count_lock.release()
 
+    def stop(self):
+        pass
+
     def run(self):
         th = []
         for i in range(self.thread_nums):
@@ -345,14 +351,11 @@ class threadpool:
     def http(self, url, **kwargs):
         func = self.hack.http
         self.queue.put({"func": func, "url": url, "kw": kwargs})
-        # self.push(func,url,post,kwargs)
 
     def httpraw(self, raw: str, ssl: bool = False, proxy=None, location=True):
         func = self.hack.httpraw
-        # self.push(func,raw,ssl,proxy,location)
         self.queue.put({"func": func, "raw": raw, "ssl": ssl,
                         "proxy": proxy, "location": location})
-        # self.queue.put(func,raw,ssl,proxy,location)
 
     def scan(self):
         while 1:
