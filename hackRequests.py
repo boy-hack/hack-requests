@@ -248,8 +248,14 @@ class hackRequests(object):
         if post:
             method = "POST"
             if isinstance(post, str):
-                post = extract_dict(post, sep="&")
-            post = parse.urlencode(post)
+                try:
+                    post = extract_dict(post, sep="&")
+                except:
+                    pass
+            try:
+                post = parse.urlencode(post)
+            except:
+                pass
             headers["Content-type"] = kwargs.get(
                 "Content-type", "application/x-www-form-urlencoded")
             headers["Accept"] = "text/plain"
