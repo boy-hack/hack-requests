@@ -43,12 +43,11 @@ def extract_dict(text, sep, sep2="="):
     return _dict
 
 
-class httpconpool(object):
+class httpcon(object):
     '''
-    httpconpool是http连接池。
+    httpcon用于生成HTTP中的连接。
 
-    所有http请求的tcp连接都会在这里缓存，通过对url解析出hash字串，若hash字串相匹配，则可以进行TCP复用，节省TCP连接的时间。
-    连接池默认缓存20条连接，若连接超出，则按照先来后到的顺序踢出连接。
+    原本这是一个连接池，但是连接池中使用多线程很容易出现冲突。经过测试后发现连接池对速度的提升也不是很明显，所以删去。
 
     Attributes:
         maxconnectpool: 连接池大小
@@ -56,19 +55,10 @@ class httpconpool(object):
     '''
 
     def __init__(self, maxconnectpool=20, timeout=10):
-        self.maxconnectpool = maxconnectpool
         self.timeout = timeout
         self.protocol = []
-        self.connectpool = collections.OrderedDict()   # 空闲连接池
         self.lock = Lock()
         self._get_protocol()
-
-    def __del__(self):
-        self.lock.acquire()
-        for k, v in self.connectpool.items():
-            v.close()
-        del self.connectpool
-        self.lock.release()
 
     def _get_protocol(self):
         if not self.protocol:
@@ -85,25 +75,10 @@ class httpconpool(object):
     
     这是连接池中最重要的一个参数，连接生成、复用相关操作都在这
     '''
+
     def get_con(self, url, proxy=None):
         scheme, host, port, path = url
-        conhash = "{}_{}_{}".format(scheme, host, port)
-        self.lock.acquire()
-        len_connect = len(self.connectpool)
-        self.lock.release()
-
-        if conhash in self.connectpool:
-            conn = self.connectpool[conhash]
-            if not getattr(conn, 'sock', None):  # AppEngine might not have  `.sock`
-                conn.connect()
-            return conn
-
-        if len_connect > self.maxconnectpool:
-            self.release()
         conn = self._make_con(scheme, host, port, proxy)
-        self.lock.acquire()
-        self.connectpool[conhash] = conn
-        self.lock.release()
         return conn
 
     def _make_con(self, scheme, host, port, proxy=None):
@@ -133,12 +108,6 @@ class httpconpool(object):
                 pass
         raise Exception('connect err')
 
-    def release(self):
-        self.lock.acquire()
-        k, v = self.connectpool.popitem()
-        v.close()
-        self.lock.release()
-
 
 class hackRequests(object):
     '''
@@ -146,16 +115,18 @@ class hackRequests(object):
 
     可以通过http或者httpraw来访问网络
     '''
-    def __init__(self,conpool = None):
+
+    def __init__(self, conpool=None):
         self.status_code = 0
         self.content = b''
         self.text = ""
         self.headers = {}
         self.log = {}
         self.encoding = ""
+        self.lock = threading.Lock()
 
         if conpool is None:
-            self.httpcon = httpconpool(maxconnectpool=20, timeout=10)
+            self.httpcon = httpcon(maxconnectpool=20, timeout=10)
         else:
             self.httpcon = conpool
 
@@ -261,13 +232,16 @@ class hackRequests(object):
             headers["Accept"] = "text/plain"
         tmp_headers = copy.deepcopy(headers)
         tmp_headers['Accept-Encoding'] = 'gzip, deflate'
-        tmp_headers['Connection'] = 'Keep-Alive'
+        tmp_headers['Connection'] = 'close'
         tmp_headers['User-Agent'] = tmp_headers['User-Agent'] if tmp_headers.get(
             'User-Agent') else 'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/46.0.2490.71 Safari/537.36'
 
         conn.request(method, path, post, tmp_headers)
+
         rep = conn.getresponse()
         body = rep.read()
+        conn.close()
+
         if post:
             log["request"] += "\r\n\r\n" + post
         log["response"] = "HTTP/%.1f %d %s" % (
@@ -352,7 +326,6 @@ class threadpool:
         self.hack = hackRequests()
         self.isContinue = True
         self.thread_count_lock = threading.Lock()
-        self.thread_lock = threading.Lock()
         self._callback = callback
 
     def push(self, payload):
@@ -364,9 +337,7 @@ class threadpool:
         self.thread_count_lock.release()
 
     def stop(self):
-        self.thread_lock.acquire()
         self.isContinue = False
-        self.thread_lock.release()
 
     def run(self):
         th = []
@@ -404,15 +375,16 @@ class threadpool:
 
             func = p.get("func")
             url = p.get("url", None)
-            self.thread_lock.acquire()
-            if url is None:
-                h = func(p.get("raw"), p.get("ssl"),
-                         p.get("proxy"), p.get("location"))
-            else:
-                h = func(url, **p.get("kw"))
-            self.thread_lock.release()
-            self._callback(h)
-
+            try:
+                if url is None:
+                    h = func(p.get("raw"), p.get("ssl"),
+                             p.get("proxy"), p.get("location"))
+                else:
+                    h = func(url, **p.get("kw"))
+                self._callback(h)
+            except Exception as e:
+                h = None
+                print(url, e)
         self.changeThreadCount(-1)
 
 
