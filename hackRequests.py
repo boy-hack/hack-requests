@@ -9,7 +9,6 @@ from urllib import parse
 from threading import Lock
 import threading
 import ssl
-import collections
 import copy
 import gzip
 import zlib
@@ -216,6 +215,7 @@ class hackRequests(object):
         except:
             raise
         conn._send_output = self._send_output(conn._send_output, conn, log)
+        tmp_headers = copy.deepcopy(headers)
         if post:
             method = "POST"
             if isinstance(post, str):
@@ -227,10 +227,9 @@ class hackRequests(object):
                 post = parse.urlencode(post)
             except:
                 pass
-            headers["Content-type"] = kwargs.get(
+            tmp_headers["Content-type"] = kwargs.get(
                 "Content-type", "application/x-www-form-urlencoded")
-            headers["Accept"] = "text/plain"
-        tmp_headers = copy.deepcopy(headers)
+            tmp_headers["Accept"] = "text/plain"
         tmp_headers['Accept-Encoding'] = 'gzip, deflate'
         tmp_headers['Connection'] = 'close'
         tmp_headers['User-Agent'] = tmp_headers['User-Agent'] if tmp_headers.get(
@@ -383,7 +382,6 @@ class threadpool:
                     h = func(url, **p.get("kw"))
                 self._callback(h)
             except Exception as e:
-                h = None
                 print(url, e)
         self.changeThreadCount(-1)
 
