@@ -1,5 +1,5 @@
 # hack-requests
-hack-requests 是基于`Python3.x`的一个给黑客们使用的http底层网络库。如果你需要一个不那么臃肿而且像requests一样优雅的设计，并且提供底层请求包/返回包原文来方便你进行下一步分析，如果你使用Burp Suite，可以将原始报文直接复制重放，对于大量的HTTP请求，hack-requests线程池也能帮你实现最快速的响应。
+HackRequests 是基于`Python3.x`的一个给黑客们使用的http底层网络库。如果你需要一个不那么臃肿而且像requests一样优雅的设计，并且提供底层请求包/返回包原文来方便你进行下一步分析，如果你使用Burp Suite，可以将原始报文直接复制重放，对于大量的HTTP请求，hack-requests线程池也能帮你实现最快速的响应。
 
 - [x] 像requests一样好用的设计
 - [x] 提供接口获得底层请求包、返回包原文，方便下一步分析
@@ -8,25 +8,19 @@ hack-requests 是基于`Python3.x`的一个给黑客们使用的http底层网络
 - [x] hack-requests是单文件模块，可方便移植到其他项目中。
 
 ## 安装
-
-将[https://github.com/boy-hack/hack-requests](https://github.com/boy-hack/hack-requests)中的`hackRequests`复制到你的项目中
-
-```python
-import hackRequests
-```
-
-即可
+- 仅支持python3
+- pip install HackRequests
 
 ## 特征
 
 ### 不需要关注参数类型
 
-在`requests`模块中，为了方便使用，header、cookie、post等信息都是以字典形式传参，但对于黑客来说，常常截获到的是一个文本，手动转换成字典费时费力。但在`hackRequests`中，这些参数你既可以传入一个字典，也可以传入一个文本，程序会自动识别并转换。
+在`requests`模块中，为了方便使用，header、cookie、post等信息都是以字典形式传参，但对于黑客来说，常常截获到的是一个文本，手动转换成字典费时费力。但在`HackRequests`中，这些参数你既可以传入一个字典，也可以传入一个文本，程序会自动识别并转换。
 
 ```python
-import hackRequests
+import HackRequests
 
-hack = hackRequests.hackRequests()
+hack = HackRequests.hackRequests()
 url = "http://www.hacking8.com"
 
 header = '''
@@ -55,9 +49,9 @@ print(uu.text())
 `hackRequests`返回结果中带有`log`参数，记录了`request`和`response`，在写扫描器的时候这两个参数参考非常重要。
 
 ```python
-import hackRequests
+import HackRequests
 
-hack = hackRequests.hackRequests()
+hack = HackRequests.hackRequests()
 url = "http://www.hacking8.com"
 
 header = '''
@@ -105,9 +99,9 @@ Accept-Ranges: bytes
 支持直接将代理抓包软件中的请求
 
 ```python
-import hackRequests
+import HackRequests
 
-hack = hackRequests.hackRequests()
+hack = HackRequests.hackRequests()
 raw = '''
 GET / HTTP/1.1
 Host: www.hacking8.com
@@ -125,17 +119,17 @@ print(hh.text())
 
 ### 内置线程池
 
-在并发网络访问方面，hackRequests的线程池可以帮助您把网络并发优化到极致。 
+在并发网络访问方面，HackRequests的线程池可以帮助您把网络并发优化到极致。 
 ```python
-import hackRequests
+import HackRequests
 
 
-def _callback(r:hackRequests.response):
+def _callback(r:HackRequests.response):
     # 从回调函数取出结果，参数r是response结果
     print(r.text())
 
 
-threadpool = hackRequests.threadpool(threadnum=10,callback=_callback)
+threadpool = HackRequests.threadpool(threadnum=10,callback=_callback)
 url = "http://www.baidu.com"
 for i in range(50):
     threadpool.http(url)
@@ -151,8 +145,8 @@ threadpool.run()
 ### 快速使用
 
 ```python
-import hackRequests
-hack = hackRequests.hackRequests()
+import HackRequests
+hack = HackRequests.hackRequests()
 url = "http://www.baidu.com/index.php"
 u = hack.http(url,method="HEAD")
 ```
@@ -178,9 +172,9 @@ u = hack.http(url,method="HEAD")
 使用`hackRequests`中的 `httpraw`方法
 
 ```python
-import hackRequests
+import HackRequests
 
-hack = hackRequests.hackRequests()
+hack = HackRequests.hackRequests()
 raw = '''
 GET / HTTP/1.1
 Host: www.hacking8.com
@@ -224,15 +218,15 @@ print(hh.text())
 ### 线程池
 
 ```python
-import hackRequests
+import HackRequests
 
 
-def _callback(r:hackRequests.response):
+def _callback(r:HackRequests.response):
     # 从回调函数取出结果，参数r是response结果
     print(r.text())
 
 
-threadpool = hackRequests.threadpool(threadnum=10,callback=_callback)
+threadpool = HackRequests.threadpool(threadnum=10,callback=_callback)
 url = "http://www.baidu.com"
 for i in range(50):
     threadpool.http(url)
