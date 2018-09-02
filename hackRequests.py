@@ -378,7 +378,7 @@ class threadpool:
                 else:
                     break
         except KeyboardInterrupt:
-            exit("User Quite")
+            exit("User Quit")
 
     def http(self, url, **kwargs):
         func = self.hack.http
