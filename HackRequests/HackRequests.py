@@ -116,12 +116,6 @@ class hackRequests(object):
     '''
 
     def __init__(self, conpool=None):
-        self.status_code = 0
-        self.content = b''
-        self.text = ""
-        self.headers = {}
-        self.log = {}
-        self.encoding = ""
         self.lock = threading.Lock()
 
         if conpool is None:
