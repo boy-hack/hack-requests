@@ -250,12 +250,12 @@ class hackRequests(object):
         if not redirect:
             redirect = url
         log["url"] = redirect
-        return response(rep, redirect, body, log)
+        return response(rep, redirect, body, log, cookie)
 
 
 class response(object):
 
-    def __init__(self, rep, redirect, body, log):
+    def __init__(self, rep, redirect, body, log, oldcookie):
         self.rep = rep
         self.body = body
         self.status_code = self.rep.status      # response code
@@ -271,6 +271,12 @@ class response(object):
                     self.cookie += v.strip().split(";")[0] + "; "
                 else:
                     self.cookie = v.strip() + "; "
+
+        if oldcookie:
+            cookie_dict = self._cookie_update(oldcookie, self.cookie)
+            self.cookie = ""
+            for k, v in cookie_dict.items():
+                self.cookie += "{}={}; ".format(k, v)
         self.cookie = self.cookie.rstrip("; ")
         self.headers = _header_dict
         self.header = self.rep.msg              # response header
@@ -309,6 +315,35 @@ class response(object):
             text = str(body)
         self.log["response"] += '\r\n' + text[:4096]
         return text
+
+    def _cookie_update(self, old, new):
+        '''
+        用于更新旧cookie,与新cookie得出交集后返回新的cookie
+        :param old:旧cookie
+        :param new:新cookie
+        :return:Str:新cookie
+        '''
+        # 先将旧cookie转换为字典，再将新cookie转换为字典时覆盖旧cookie
+        old_sep = old.strip().split(";")
+        new_sep = new.strip().split(";")
+        cookie_dict = {}
+        for sep in old_sep:
+            if sep == "":
+                continue
+            try:
+                k, v = sep.split("=")
+                cookie_dict[k.strip()] = v
+            except:
+                continue
+        for sep in new_sep:
+            if sep == "":
+                continue
+            try:
+                k, v = sep.split("=")
+                cookie_dict[k.strip()] = v
+            except:
+                continue
+        return cookie_dict
 
 
 class threadpool:
