@@ -278,6 +278,10 @@ class response(object):
             for k, v in cookie_dict.items():
                 self.cookie += "{}={}; ".format(k, v)
         self.cookie = self.cookie.rstrip("; ")
+        try:
+            self.cookies = extract_dict(self.cookie, "; ", "=")
+        except:
+            self.cookies = {}
         self.headers = _header_dict
         self.header = self.rep.msg              # response header
         self.log = {}                           # response log

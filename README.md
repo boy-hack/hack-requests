@@ -214,6 +214,7 @@ print(hh.text())
 | log         | 获取底层发送的请求包/返回包     | Dict       |
 | url         | 返回url，若发生跳转则为跳转后的 | Str        |
 | cookie      | 返回请求后的Cookie           | Str        |
+| cookies     | 返回请求后的Cookie字典形式    | Dict       |
 
 ### 线程池
 
