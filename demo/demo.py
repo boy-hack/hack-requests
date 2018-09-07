@@ -1,10 +1,11 @@
 import HackRequests
 
-u = "http://www.hacking8.com/test.php"
+u = "https://bbs.125.la/"
 hack = HackRequests.hackRequests()
 cookie1 = "user=useraa; "
-hh = hack.http(u, cookie=cookie1)
+hh = hack.http(u)
 new = hh.cookie
 print(new)
+print(hh.cookies)
 
 
