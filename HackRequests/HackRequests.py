@@ -131,13 +131,13 @@ class hackRequests(object):
         hostname = p.netloc
         port = 80 if scheme == "http" else 443
         if ":" in hostname:
-            hostname, name = hostname.split(":")
+            hostname, port = hostname.split(":")
         path = ""
         if p.path:
             path = p.path
             if p.query:
                 path = path + "?" + p.query
-        return scheme, hostname, port, path
+        return scheme, hostname, int(port), path
 
     def _send_output(self, oldfun, con, log):
         def _send_output_hook(*args, **kwargs):
