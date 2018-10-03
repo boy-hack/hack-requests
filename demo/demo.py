@@ -1,9 +1,8 @@
-import HackRequests
+import HackRequests as hack
 
 u = "https://bbs.125.la/"
-hack = HackRequests.hackRequests()
 cookie1 = "user=useraa; "
-hh = hack.http(u)
+hh = hack.http(u, cookie=cookie1)
 new = hh.cookie
 print(new)
 print(hh.cookies)

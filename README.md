@@ -12,6 +12,25 @@ HackRequests 是基于`Python3.x`的一个给黑客们使用的http底层网络�
 - pip install HackRequests
 
 ## 特征
+### 更人性化的调用方式
+在`0.3.2`版本中更新了更简单的调用方式。
+之前http访问调用方式为
+```python
+import HackRequests
+
+hack = HackRequests.hackRequests()
+url = "http://www.hacking8.com"
+hh = hack.http(url)
+print(hh.text())
+```
+现在调用方式为
+```python
+import HackRequests as hack
+url = "http://www.hacking8.com"
+hh = hack.http(url)
+print(hh.text())
+```
+当然也是兼容之前的调用方式
 
 ### 不需要关注参数类型
 
