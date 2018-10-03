@@ -419,5 +419,15 @@ class threadpool:
         self.changeThreadCount(-1)
 
 
+def http(url, **kwargs):
+    hack = hackRequests()
+    return hack.http(url, **kwargs)
+
+
+def httpraw(raw: str, ssl: bool = False, proxy=None, location=True):
+    hack = hackRequests()
+    return hack.httpraw(raw, ssl=ssl, proxy=proxy, location=location)
+
+
 if __name__ == '__main__':
     pass
