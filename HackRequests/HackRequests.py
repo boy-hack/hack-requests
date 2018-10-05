@@ -244,6 +244,8 @@ class hackRequests(object):
             raise HackError("socket connect timeout")
         except socket.gaierror:
             raise HackError("socket don't get hostname")
+        except KeyboardInterrupt:
+            raise HackError("user exit")
         finally:
             conn.close()
 
