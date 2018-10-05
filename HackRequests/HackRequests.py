@@ -14,6 +14,7 @@ import gzip
 import zlib
 import time
 import queue
+import socket
 
 
 class Compatibleheader(str):
@@ -25,6 +26,12 @@ class Compatibleheader(str):
 
     def get(self, key, d=None):
         return self.dict.get(key, d)
+
+class HackError(Exception):
+    def __init__(self,content):
+        self.content=content
+    def __str__(self):
+        return self.content
 
 
 def extract_dict(text, sep, sep2="="):
@@ -229,11 +236,17 @@ class hackRequests(object):
         tmp_headers['User-Agent'] = tmp_headers['User-Agent'] if tmp_headers.get(
             'User-Agent') else 'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/46.0.2490.71 Safari/537.36'
 
-        conn.request(method, path, post, tmp_headers)
+        try:
+            conn.request(method, path, post, tmp_headers)
+            rep = conn.getresponse()
+            body = rep.read()
+        except socket.timeout:
+            raise HackError("socket connect timeout")
+        except socket.gaierror:
+            raise HackError("socket don't get hostname")
+        finally:
+            conn.close()
 
-        rep = conn.getresponse()
-        body = rep.read()
-        conn.close()
 
         if post:
             log["request"] += "\r\n\r\n" + post
