@@ -230,8 +230,8 @@ class hackRequests(object):
                 pass
             tmp_headers["Content-type"] = kwargs.get(
                 "Content-type", "application/x-www-form-urlencoded")
-            tmp_headers["Accept"] = "text/plain"
-        tmp_headers['Accept-Encoding'] = 'gzip, deflate'
+            tmp_headers["Accept"] = tmp_headers.get("Accept", "*/*")
+        tmp_headers['Accept-Encoding'] = tmp_headers.get("Accept-Encoding", "gzip, deflate")
         tmp_headers['Connection'] = 'close'
         tmp_headers['User-Agent'] = tmp_headers['User-Agent'] if tmp_headers.get(
             'User-Agent') else 'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/46.0.2490.71 Safari/537.36'
