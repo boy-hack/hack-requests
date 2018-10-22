@@ -27,7 +27,7 @@ print(hh.text())
 ```python
 import HackRequests as hack
 url = "http://www.hacking8.com"
-hh = hack.http(url)
+hh = hack.http(url,timeout=20)  # 默认超时时间为10s，可设置
 print(hh.text())
 ```
 当然也是兼容之前的调用方式
@@ -246,7 +246,8 @@ def _callback(r:HackRequests.response):
     print(r.text())
 
 
-threadpool = HackRequests.threadpool(threadnum=10,callback=_callback)
+threadpool = HackRequests.threadpool(threadnum=10,callback=_callback,timeout=10)
+# 可设置http访问的超时时间，不设置则默认为10s。线程数量[threadnum]设置根据自己电脑配置设置，默认为10,值越大线程越多同一秒访问的网站数量也越多。
 url = "http://www.baidu.com"
 for i in range(50):
     threadpool.http(url)
@@ -261,6 +262,7 @@ threadpool.run()
 | httpraw() | 见[说明文档]-[快速使用] | 将HTTP请求后加入现成队列，准备执行 |
 | stop()    |                         | 停止线程池                         |
 | run()     |                         | 启动线程池                         |
+
 
 ## Thx
 

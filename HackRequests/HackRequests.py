@@ -60,7 +60,7 @@ class httpcon(object):
         timeout: 超时时间
     '''
 
-    def __init__(self, maxconnectpool=20, timeout=10):
+    def __init__(self, timeout=10,maxconnectpool=20,):
         self.timeout = timeout
         self.protocol = []
         self.lock = Lock()
@@ -367,10 +367,11 @@ class response(object):
 
 class threadpool:
 
-    def __init__(self, threadnum, callback):
+    def __init__(self, threadnum, callback, timeout = 10):
         self.thread_count = self.thread_nums = threadnum
         self.queue = queue.Queue()
-        self.hack = hackRequests()
+        con = httpcon(timeout=timeout)
+        self.hack = hackRequests(con)
         self.isContinue = True
         self.thread_count_lock = threading.Lock()
         self._callback = callback
@@ -435,12 +436,15 @@ class threadpool:
 
 
 def http(url, **kwargs):
-    hack = hackRequests()
+    timeout = kwargs.get("timeout", 10)
+    con = httpcon(timeout=timeout)
+    hack = hackRequests(con)
     return hack.http(url, **kwargs)
 
 
-def httpraw(raw: str, ssl: bool = False, proxy=None, location=True):
-    hack = hackRequests()
+def httpraw(raw: str, ssl: bool = False, proxy=None, location=True, timeout = 10):
+    con = httpcon(timeout=timeout)
+    hack = hackRequests(con)
     return hack.httpraw(raw, ssl=ssl, proxy=proxy, location=location)
 
 
