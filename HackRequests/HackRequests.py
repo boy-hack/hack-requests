@@ -27,9 +27,11 @@ class Compatibleheader(str):
     def get(self, key, d=None):
         return self.dict.get(key, d)
 
+
 class HackError(Exception):
-    def __init__(self,content):
-        self.content=content
+    def __init__(self, content):
+        self.content = content
+
     def __str__(self):
         return self.content
 
@@ -60,7 +62,7 @@ class httpcon(object):
         timeout: 超时时间
     '''
 
-    def __init__(self, timeout=10,maxconnectpool=20,):
+    def __init__(self, timeout=10, maxconnectpool=20, ):
         self.timeout = timeout
         self.protocol = []
         self.lock = Lock()
@@ -130,7 +132,7 @@ class hackRequests(object):
         else:
             self.httpcon = conpool
 
-    def _get_urlinfo(self, url):
+    def _get_urlinfo(self, url, realhost: str):
         p = parse.urlparse(url)
         scheme = p.scheme.lower()
         if scheme != "http" and scheme != "https":
@@ -144,6 +146,10 @@ class hackRequests(object):
             path = p.path
             if p.query:
                 path = path + "?" + p.query
+        if realhost:
+            if ":" not in realhost:
+                realhost = realhost + ":80"
+            hostname, port = realhost.split(":")
         return scheme, hostname, int(port), path
 
     def _send_output(self, oldfun, con, log):
@@ -152,10 +158,15 @@ class hackRequests(object):
             log['request'] = log["request"].decode('utf-8')
             oldfun(*args, **kwargs)
             con._send_output = oldfun
+
         return _send_output_hook
 
-    def httpraw(self, raw: str, ssl: bool = False, proxy=None, location=True):
+    def httpraw(self, raw: str, ssl: bool = False, **kwargs):
         raw = raw.strip()
+        proxy = kwargs.get("proxy", None)
+        location = kwargs.get("location", None)
+        real_host = kwargs.get("real_host", None)
+
         raws = raw.splitlines()
         try:
             method, path, protocol = raws[0].split(" ")
@@ -170,7 +181,7 @@ class hackRequests(object):
                     break
             if len(raws) == index:
                 raise Exception
-            d = raws[1:index-1]
+            d = raws[1:index - 1]
             d = extract_dict('\n'.join(d), '\n', ": ")
             post = raws[index]
 
@@ -178,11 +189,13 @@ class hackRequests(object):
             d = extract_dict('\n'.join(raws[1:]), '\n', ": ")
         netloc = "http" if not ssl else "https"
         host = d.get("Host", None)
-        if host is None:
+        if host is None and real_host is None:
             raise Exception
-        del d["Host"]
+        # del d["Host"]
+        if real_host:
+            host = real_host
         url = "{}://{}".format(netloc, host + path)
-        return self.http(url, post=post, headers=d, proxy=proxy, location=location)
+        return self.http(url, post=post, headers=d, proxy=proxy, location=location, real_host=real_host)
 
     def http(self, url, **kwargs):
         method = kwargs.get("method", "GET")
@@ -192,6 +205,10 @@ class hackRequests(object):
 
         proxy = kwargs.get('proxy', None)
         headers = kwargs.get('headers', {})
+
+        # real host:ip
+        real_host = kwargs.get("real_host", None)
+
         if isinstance(headers, str):
             headers = extract_dict(headers.strip(), '\n', ': ')
         cookie = kwargs.get("cookie", None)
@@ -205,11 +222,13 @@ class hackRequests(object):
             headers["Cookie"] = cookiestr
         for arg_key, h in [
             ('referer', 'Referer'),
-                ('user_agent', 'User-Agent'), ]:
+            ('user_agent', 'User-Agent'), ]:
             if kwargs.get(arg_key):
                 headers[h] = kwargs.get(arg_key)
+        if "Content-Length" in headers:
+            del headers["Content-Length"]
 
-        urlinfo = scheme, host, port, path = self._get_urlinfo(url)
+        urlinfo = scheme, host, port, path = self._get_urlinfo(url, real_host)
         log = {}
         try:
             conn = self.httpcon.get_con(urlinfo, proxy=proxy)
@@ -228,7 +247,7 @@ class hackRequests(object):
                 post = parse.urlencode(post)
             except:
                 pass
-            tmp_headers["Content-type"] = kwargs.get(
+            tmp_headers["Content-Type"] = kwargs.get(
                 "Content-type", "application/x-www-form-urlencoded")
             tmp_headers["Accept"] = tmp_headers.get("Accept", "*/*")
         tmp_headers['Accept-Encoding'] = tmp_headers.get("Accept-Encoding", "gzip, deflate")
@@ -249,7 +268,6 @@ class hackRequests(object):
         finally:
             conn.close()
 
-
         if post:
             log["request"] += "\r\n\r\n" + post
         log["response"] = "HTTP/%.1f %d %s" % (
@@ -260,7 +278,8 @@ class hackRequests(object):
         if redirect and location and locationcount < 10:
             if not redirect.startswith('http'):
                 redirect = parse.urljoin(url, redirect)
-            return self.http(redirect, post=None, method=method, headers=tmp_headers, location=True, locationcount=locationcount + 1)
+            return self.http(redirect, post=None, method=method, headers=tmp_headers, location=True,
+                             locationcount=locationcount + 1)
 
         if not redirect:
             redirect = url
@@ -273,7 +292,7 @@ class response(object):
     def __init__(self, rep, redirect, body, log, oldcookie):
         self.rep = rep
         self.body = body
-        self.status_code = self.rep.status      # response code
+        self.status_code = self.rep.status  # response code
         self.url = redirect
 
         _header_dict = dict()
@@ -298,9 +317,9 @@ class response(object):
         except:
             self.cookies = {}
         self.headers = _header_dict
-        self.header = self.rep.msg              # response header
-        self.log = {}                           # response log
-        self.charset = ""                       # response encoding
+        self.header = self.rep.msg  # response header
+        self.log = {}  # response log
+        self.charset = ""  # response encoding
         self.log = log
         charset = self.rep.msg.get('content-type', 'utf-8')
         try:
@@ -367,7 +386,7 @@ class response(object):
 
 class threadpool:
 
-    def __init__(self, threadnum, callback, timeout = 10):
+    def __init__(self, threadnum, callback, timeout=10):
         self.thread_count = self.thread_nums = threadnum
         self.queue = queue.Queue()
         con = httpcon(timeout=timeout)
@@ -442,10 +461,11 @@ def http(url, **kwargs):
     return hack.http(url, **kwargs)
 
 
-def httpraw(raw: str, ssl: bool = False, proxy=None, location=True, timeout = 10):
-    con = httpcon(timeout=timeout)
-    hack = hackRequests(con)
-    return hack.httpraw(raw, ssl=ssl, proxy=proxy, location=location)
+def httpraw(raw: str, **kwargs):
+    # con = httpcon(timeout=timeout)
+    # hack = hackRequests(con)
+    hack = hackRequests()
+    return hack.httpraw(raw, **kwargs)
 
 
 if __name__ == '__main__':
