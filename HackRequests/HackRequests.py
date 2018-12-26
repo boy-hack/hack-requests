@@ -4,17 +4,17 @@
 # @Mail     :   w8ay@qq.com
 # @File     :   hackRequests.py
 
-from http import client
-from urllib import parse
-from threading import Lock
-import threading
-import ssl
 import copy
 import gzip
-import zlib
-import time
 import queue
 import socket
+import ssl
+import threading
+import time
+import zlib
+from http import client
+from threading import Lock
+from urllib import parse
 
 
 class Compatibleheader(str):
@@ -258,7 +258,7 @@ class hackRequests(object):
         try:
             conn.request(method, path, post, tmp_headers)
             rep = conn.getresponse()
-            body = rep.read()
+            # body = rep.read()
         except socket.timeout:
             raise HackError("socket connect timeout")
         except socket.gaierror:
@@ -284,14 +284,14 @@ class hackRequests(object):
         if not redirect:
             redirect = url
         log["url"] = redirect
-        return response(rep, redirect, body, log, cookie)
+        return response(rep, redirect, log, cookie)
 
 
 class response(object):
 
-    def __init__(self, rep, redirect, body, log, oldcookie):
+    def __init__(self, rep, redirect, log, oldcookie):
         self.rep = rep
-        self.body = body
+        # self.body = body
         self.status_code = self.rep.status  # response code
         self.url = redirect
 
@@ -318,8 +318,6 @@ class response(object):
             self.cookies = {}
         self.headers = _header_dict
         self.header = self.rep.msg  # response header
-        self.log = {}  # response log
-        self.charset = ""  # response encoding
         self.log = log
         charset = self.rep.msg.get('content-type', 'utf-8')
         try:
@@ -329,7 +327,7 @@ class response(object):
 
     def content(self):
         encode = self.rep.msg.get('content-encoding', None)
-        body = self.body
+        body = self.rep.read()
         if encode == 'gzip':
             body = gzip.decompress(body)
         elif encode == 'deflate':
@@ -455,9 +453,9 @@ class threadpool:
 
 
 def http(url, **kwargs):
-    timeout = kwargs.get("timeout", 10)
-    con = httpcon(timeout=timeout)
-    hack = hackRequests(con)
+    # timeout = kwargs.get("timeout", 10)
+    # con = httpcon(timeout=timeout)
+    hack = hackRequests()
     return hack.http(url, **kwargs)
 
 
