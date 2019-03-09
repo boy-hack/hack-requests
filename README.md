@@ -1,36 +1,16 @@
 # hack-requests
 HackRequests 是基于`Python3.x`的一个给黑客们使用的http底层网络库。如果你需要一个不那么臃肿而且像requests一样优雅的设计，并且提供底层请求包/返回包原文来方便你进行下一步分析，如果你使用Burp Suite，可以将原始报文直接复制重放，对于大量的HTTP请求，hack-requests线程池也能帮你实现最快速的响应。
 
-- [x] 像requests一样好用的设计
-- [x] 提供接口获得底层请求包、返回包原文，方便下一步分析
-- [x] 支持发送HTTP原始报文，支持从Burp Suite等抓包软件中重放
-- [x] hack-requests内部使用连接池、线程池等技术，hack-requests会用最快的方式获取响应数据。使大量I/O密集型操作无需关注这些细节
-- [x] hack-requests是单文件模块，可方便移植到其他项目中。
+- 像requests一样好用的设计
+- 提供接口获得底层请求包、返回包原文，方便下一步分析
+- 支持发送HTTP原始报文，支持从Burp Suite等抓包软件中重放
+- hack-requests是单文件模块，可方便移植到其他项目中。
 
 ## 安装
 - 仅支持python3
 - pip install HackRequests
 
 ## 特征
-### 更人性化的调用方式
-在`0.3.2`版本中更新了更简单的调用方式。
-之前http访问调用方式为
-```python
-import HackRequests
-
-hack = HackRequests.hackRequests()
-url = "http://x.hacking8.com"
-hh = hack.http(url)
-print(hh.text())
-```
-现在调用方式为
-```python
-import HackRequests as hack
-url = "http://x.hacking8.com"
-hh = hack.http(url,timeout=20)  # 默认超时时间为10s，可设置
-print(hh.text())
-```
-当然也是兼容之前的调用方式
 
 ### 不需要关注参数类型
 
@@ -265,8 +245,4 @@ threadpool.run()
 | stop()    |                         | 停止线程池                         |
 | run()     |                         | 启动线程池                         |
 
-
-## Thx
-
-[https://github.com/BugScanTeam/hackhttp](https://github.com/BugScanTeam/hackhttp)
 
