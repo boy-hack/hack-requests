@@ -227,6 +227,7 @@ class hackRequests(object):
                     body = body.replace('\r\n', '\n')
                     body = body.replace('\n', '\r\n')
                     body = body + "\r\n" * 2
+                log["request"] += "\r\n" + body
                 conn.send(body.encode('utf-8'))
             rep = conn.getresponse()
         except socket.timeout:
