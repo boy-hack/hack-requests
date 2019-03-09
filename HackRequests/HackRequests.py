@@ -184,10 +184,12 @@ class hackRequests(object):
                 host, port = host.split(":")
         raws = raw.splitlines()
         headers = {}
-        index = 0
-        for r in raws:
-            raws[index] = r.lstrip()
-            index += 1
+
+        # index = 0
+        # for r in raws:
+        #     raws[index] = r.lstrip()
+        #     index += 1
+
         index = 0
         for r in raws:
             if r == "":
