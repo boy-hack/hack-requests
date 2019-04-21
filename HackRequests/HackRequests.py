@@ -380,7 +380,10 @@ class response(object):
         if self._content:
             return self._content
         encode = self.rep.msg.get('content-encoding', None)
-        body = self.rep.read()
+        try:
+            body = self.rep.read()
+        except socket.timeout:
+            body = b''
         if encode == 'gzip':
             body = gzip.decompress(body)
         elif encode == 'deflate':
