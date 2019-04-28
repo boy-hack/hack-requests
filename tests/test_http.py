@@ -25,3 +25,11 @@ class TestCase(unittest.TestCase):
         data = '{"hack-requests":"v1.0","author":"w8ay"}'
         r = self.hack.http("http://httpbin.org/post", post=data)
         self.assertTrue("hack-requests" in r.text())
+
+    def test_localhost(self):
+        headers = {
+            "Referer": "xx",
+            "referer": "xx"
+        }
+        r = self.hack.http("http://127.0.0.1:8888", headers=headers)
+        print(r.text())

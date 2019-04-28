@@ -495,12 +495,12 @@ class threadpool:
             else:
                 break
 
-            func = p.get("func")
+            func = p.pop("func")
             url = p.get("url", None)
             try:
                 if url is None:
-                    h = func(p.get("raw"), p.get("ssl"),
-                             p.get("proxy"), p.get("location"))
+                    raw = p.pop('raw')
+                    h = func(raw, **p)
                 else:
                     h = func(url, **p.get("kw"))
                 self._callback(h)

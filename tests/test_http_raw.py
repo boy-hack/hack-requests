@@ -87,4 +87,5 @@ or ld
 
         '''
         r = self.hack.httpraw(raw)
+        print(r.text())
         self.assertTrue("helloworld!helloworld hellowor ld" in r.text())

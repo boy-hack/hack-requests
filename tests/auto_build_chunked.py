@@ -51,6 +51,7 @@ Upgrade-Insecure-Requests: 1
 User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/72.0.3626.121 Safari/537.36
 Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,/;q=0.8
 Accept-Encoding: gzip, deflate
+Content-Type: application/x-www-form-urlencoded
 Accept-Language: zh-CN,zh;q=0.9,en;q=0.8
 Transfer-Encoding: Chunked
 
@@ -60,5 +61,7 @@ Transfer-Encoding: Chunked
 hack = HackRequests.hackRequests()
 
 r = hack.httpraw(raw)
+print(raw)
+
 print(r.text())
 print(r.log)
