@@ -1,5 +1,5 @@
 __title__ = 'HackRequests'
-__version__ = '1.1'
+__version__ = '1.2'
 __author__ = 'w8ay'
 __author_email__ = 'w8ay@qq.com'
 __url__ = 'https://github.com/boy-hack/hack-requests/'
