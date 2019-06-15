@@ -55,7 +55,7 @@ class httpcon(object):
     def _get_protocol(self):
         if not self.protocol:
             ps = (
-                'PROTOCOL_SSLv3', 'PROTOCOL_SSLv23', 'PROTOCOL_TLSv1',
+                'PROTOCOL_SSLv23', 'PROTOCOL_TLSv1',
                 'PROTOCOL_SSLv2', 'PROTOCOL_TLSv1_1', 'PROTOCOL_TLSv1_2')
             for p in ps:
                 pa = getattr(ssl, p, None)

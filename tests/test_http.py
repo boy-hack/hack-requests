@@ -31,5 +31,5 @@ class TestCase(unittest.TestCase):
             "Referer": "xx",
             "referer": "xx"
         }
-        r = self.hack.http("http://127.0.0.1:8888", headers=headers)
+        r = self.hack.http("https://x.hacking8.com", headers=headers)
         print(r.text())
