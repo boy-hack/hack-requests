@@ -89,3 +89,23 @@ or ld
         r = self.hack.httpraw(raw)
         print(r.text())
         self.assertTrue("helloworld!helloworld hellowor ld" in r.text())
+
+    def test_redirect(self):
+        raw = ''' 
+GET / HTTP/1.1
+Host: www.python.org
+Connection: Keep-Alive
+Cache-Control: max-age=0
+Upgrade-Insecure-Requests: 1
+User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/68.0.3440.106 Safari/537.36
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8
+Accept-Encoding: gzip, deflate
+Accept-Language: zh-CN,zh;q=0.9,en;q=0.8
+        '''
+        r = self.hack.httpraw(raw)
+        self.assertEqual(r.status_code, 200)
+        self.assertIn('class="python home"', r.text())
+
+        r = self.hack.httpraw(raw, location=False)
+        self.assertEqual(r.status_code, 301)
+        self.assertTrue(r.text() == "")
