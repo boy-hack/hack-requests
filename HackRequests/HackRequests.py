@@ -368,7 +368,7 @@ class response(object):
             self.cookies = {}
 
         self.headers = _header_dict
-        self.header = self.rep.msg  # response header
+        self.header = str(self.rep.msg)  # response header
         self.log = log
         charset = self.rep.msg.get('content-type', 'utf-8')
         try:
