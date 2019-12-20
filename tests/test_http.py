@@ -33,3 +33,10 @@ class TestCase(unittest.TestCase):
         }
         r = self.hack.http("https://x.hacking8.com", headers=headers)
         print(r.text())
+    
+    def test_url_encode(self):
+        arg = ("哈哈哈 哈", "%E5%93%88%E5%93%88%E5%93%88%20%E5%93%88")
+        r = self.hack.http("http://httpbin.org/get?a=1&b=2&c=%s" % arg[0])
+        encoded_r = self.hack.http(
+            "http://httpbin.org/get?a=1&b=2&c=%s" % arg[1])
+        self.assertEqual(json.loads(r.text())["args"], json.loads(encoded_r.text())["args"])
