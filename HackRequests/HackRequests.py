@@ -305,13 +305,18 @@ class hackRequests(object):
                 post = parse.urlencode(post)
             except:
                 pass
-            tmp_headers["Content-Type"] = kwargs.get(
-                "Content-type", "application/x-www-form-urlencoded")
-            tmp_headers["Accept"] = tmp_headers.get("Accept", "*/*")
-        tmp_headers['Accept-Encoding'] = tmp_headers.get("Accept-Encoding", "gzip, deflate")
-        tmp_headers['Connection'] = 'close'
-        tmp_headers['User-Agent'] = tmp_headers['User-Agent'] if tmp_headers.get(
-            'User-Agent') else 'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/46.0.2490.71 Safari/537.36'
+                if "Content-Type" not in headers:
+                    tmp_headers["Content-Type"] = kwargs.get(
+                        "Content-type", "application/json")
+                if 'Accept' not in headers:
+                    tmp_headers["Accept"] = tmp_headers.get("Accept", "*/*")
+            if 'Accept-Encoding' not in headers:
+                tmp_headers['Accept-Encoding'] = tmp_headers.get("Accept-Encoding", "gzip, deflate")
+            if 'Connection' not in headers:
+                tmp_headers['Connection'] = 'close'
+            if 'User-Agent' not in headers:
+                tmp_headers['User-Agent'] = tmp_headers['User-Agent'] if tmp_headers.get(
+                    'User-Agent') else 'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/46.0.2490.71 Safari/537.36'
 
         try:
             conn.request(method, path, post, tmp_headers)
