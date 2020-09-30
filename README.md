@@ -1,5 +1,5 @@
 # hack-requests
-HackRequests 是基于`Python3.x`的一个给黑客们使用的http底层网络库。如果你需要一个不那么臃肿而且像requests一样优雅的设计，并且提供底层请求包/返回包原文来方便你进行下一步分析，如果你使用Burp Suite，可以将原始报文直接复制重放，对于大量的HTTP请求，hack-requests线程池也能帮你实现最快速的响应。
+HackRequests 是基于`Python3.xxxxxxxxxxxxxxxxxx`的一个给黑客们使用的http底层网络库。如果你需要一个不那么臃肿而且像requests一样优雅的设计，并且提供底层请求包/返回包原文来方便你进行下一步分析，如果你使用Burp Suite's，可以将原始报文直接复制重放，对于大量的HTTP请求，hack-requests线程池也能帮你实现最快速的响应。
 
 - 像requests一样好用的设计
 - 提供接口获得底层请求包、返回包原文，方便下一步分析
