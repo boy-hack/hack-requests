@@ -496,10 +496,10 @@ class threadpool:
         func = self.hack.http
         self.queue.put({"func": func, "url": url, "kw": kwargs})
 
-    def httpraw(self, raw: str, ssl: bool = False, proxy=None, location=True):
+    def httpraw(self, raw: str, ssl: bool = False, proxy=None, location=True, real_host=None):
         func = self.hack.httpraw
         self.queue.put({"func": func, "raw": raw, "ssl": ssl,
-                        "proxy": proxy, "location": location})
+                        "proxy": proxy, "location": location, 'real_host': real_host})
 
     def scan(self):
         while 1:
@@ -518,7 +518,10 @@ class threadpool:
                     h = func(url, **p.get("kw"))
                 self._callback(h)
             except Exception as e:
-                print(url, e)
+                # print(url, e)
+                pass
+                # import traceback
+                # traceback.print_exc()
         self.changeThreadCount(-1)
 
 
