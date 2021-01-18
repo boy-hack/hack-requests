@@ -186,6 +186,10 @@ class hackRequests(object):
         raws = raw.splitlines()
         headers = {}
 
+        # log字典增加源ip，port
+        log['src_host'] = host
+        log['src_port'] = port
+
         # index = 0
         # for r in raws:
         #     raws[index] = r.lstrip()
@@ -288,6 +292,9 @@ class hackRequests(object):
 
         urlinfo = scheme, host, port, path = self._get_urlinfo(url, real_host)
         log = {}
+        # log字典增加源ip，port
+        log['src_host'] = host
+        log['src_port'] = port
         try:
             conn = self.httpcon.get_con(urlinfo, proxy=proxy)
         except:
@@ -518,7 +525,7 @@ class threadpool:
                     h = func(url, **p.get("kw"))
                 self._callback(h)
             except Exception as e:
-                # print(url, e)
+                # print(url, e, p.pop("real_host"))
                 pass
                 # import traceback
                 # traceback.print_exc()
