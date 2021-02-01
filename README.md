@@ -1,3 +1,48 @@
+# ReadMe
+本程序在原作者基础上做了两处修改：
+1. 自带的多线程`threadpool.httpraw`接口中，未添加`real_host`参数传入，导致多线程时无法修改数据包的目标ip地址
+
+
+修改后可进入如下传参：
+```python
+threadpool.httpraw(raw_http_pkt, proxy=PROXIES, real_host=addr, ssl=ssl)
+    threadpool.run()
+```
+
+2. `response.log`增加源`real_host`的记录
+```python
+log['src_host'] = host
+log['src_port'] = port
+```
+使用示例如下：
+```python
+addrs = [
+        "1.1.1.1:80",
+        "2.2.2.2:80"
+    ]
+
+def _callback(r: HackRequests.response):
+    flag = re.findall(FLAG_PATTERN, r.text())
+    if flag:
+        flags = ';'.join(set(flag))
+        ip = r.log.get('src_ip')
+        req_text = r.log.get('request')
+        rsp_text = r.log.get('response')
+        data = [req_text, rsp_text]
+        flag_queue.put([ip, flags, data])
+        
+threadpool = HackRequests.threadpool(threadnum=5,callback=_callback,timeout=5)
+
+for addr in addrs:
+    threadpool.httpraw(raw_http_pkt, real_host=addr, ssl=ssl)
+    
+threadpool.run()
+
+
+```
+
+# 以下是原作者ReadMe
+---- 
 # hack-requests
 HackRequests 是基于`Python3.x`的一个给黑客们使用的http底层网络库。如果你需要一个不那么臃肿而且像requests一样优雅的设计，并且提供底层请求包/返回包原文来方便你进行下一步分析，如果你使用Burp Suite，可以将原始报文直接复制重放，对于大量的HTTP请求，hack-requests线程池也能帮你实现最快速的响应。
 
