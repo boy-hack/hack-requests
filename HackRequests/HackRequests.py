@@ -116,7 +116,7 @@ class hackRequests(object):
         else:
             self.httpcon = conpool
 
-    def _get_urlinfo(self, url, realhost: str):
+    def _get_urlinfo(self, url, params: dict,realhost: str):
         p = parse.urlparse(url)
         scheme = p.scheme.lower()
         if scheme != "http" and scheme != "https":
@@ -125,11 +125,17 @@ class hackRequests(object):
         port = 80 if scheme == "http" else 443
         if ":" in hostname:
             hostname, port = hostname.split(":")
-        path = ""
-        if p.path:
+        query = parse.urlencode(params)
+        if p.path == "":
+            path = "/"
+        else:
             path = p.path
-            if p.query:
-                path = path + "?" + p.query
+        if p.query:
+            path = path + "?" + p.query
+            if query:
+                path = path + "&" + query
+        elif query:
+            path = path + "?" + query
         if realhost:
             if ":" not in realhost:
                 realhost = realhost + ":80"
@@ -242,7 +248,7 @@ class hackRequests(object):
         log["response"] = "HTTP/%.1f %d %s" % (
             rep.version * 0.1, rep.status,
             rep.reason) + '\r\n' + str(rep.msg)
-        if port == 80 or port == 443:
+        if port == 80 or port == 
             _url = "{scheme}://{host}{path}".format(scheme=scheme, host=host, path=path)
         else:
             _url = "{scheme}://{host}{path}".format(scheme=scheme, host=host + ":" + port, path=path)
@@ -263,7 +269,7 @@ class hackRequests(object):
 
         proxy = kwargs.get('proxy', None)
         headers = kwargs.get('headers', {})
-
+        params = kwargs.get("params", {})
         # real host:ip
         real_host = kwargs.get("real_host", None)
 
@@ -286,7 +292,7 @@ class hackRequests(object):
         if "Content-Length" in headers:
             del headers["Content-Length"]
 
-        urlinfo = scheme, host, port, path = self._get_urlinfo(url, real_host)
+        urlinfo = scheme, host, port, path = self._get_urlinfo(url, params,real_host)
         log = {}
         try:
             conn = self.httpcon.get_con(urlinfo, proxy=proxy)
