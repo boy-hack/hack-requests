@@ -248,7 +248,7 @@ class hackRequests(object):
         log["response"] = "HTTP/%.1f %d %s" % (
             rep.version * 0.1, rep.status,
             rep.reason) + '\r\n' + str(rep.msg)
-        if port == 80 or port == 
+        if port == 80 or port == 443:
             _url = "{scheme}://{host}{path}".format(scheme=scheme, host=host, path=path)
         else:
             _url = "{scheme}://{host}{path}".format(scheme=scheme, host=host + ":" + port, path=path)
