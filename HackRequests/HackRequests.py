@@ -15,6 +15,8 @@ import zlib
 from http import client
 from urllib import parse
 
+from pytest import param
+
 
 class HackError(Exception):
     def __init__(self, content):
@@ -252,13 +254,12 @@ class hackRequests(object):
             _url = "{scheme}://{host}{path}".format(scheme=scheme, host=host, path=path)
         else:
             _url = "{scheme}://{host}{path}".format(scheme=scheme, host=host + ":" + port, path=path)
-        
+
         redirect = rep.msg.get('location', None)  # handle 301/302
         if redirect and location:
             if not redirect.startswith('http'):
                 redirect = parse.urljoin(_url, redirect)
             return self.http(redirect, post=None, method=method, headers=headers, location=True, locationcount=1)
-
         return response(rep, _url, log, )
 
     def http(self, url, **kwargs):
@@ -293,6 +294,7 @@ class hackRequests(object):
             del headers["Content-Length"]
 
         urlinfo = scheme, host, port, path = self._get_urlinfo(url, params,real_host)
+
         log = {}
         try:
             conn = self.httpcon.get_con(urlinfo, proxy=proxy)
@@ -313,9 +315,12 @@ class hackRequests(object):
                     post = parse.urlencode(post)
                 except:
                     pass
+            else:
+                raise Exception("post must be str or dict")
             if "Content-Type" not in headers:
                 tmp_headers["Content-Type"] = kwargs.get(
-                    "Content-type", "application/json")
+                    "Content-type", "application/x-www-form-urlencoded")
+
             if 'Accept' not in headers:
                 tmp_headers["Accept"] = tmp_headers.get("Accept", "*/*")
         if 'Accept-Encoding' not in headers:
