@@ -15,8 +15,6 @@ import zlib
 from http import client
 from urllib import parse
 
-from pytest import param
-
 
 class HackError(Exception):
     def __init__(self, content):
@@ -157,6 +155,7 @@ class hackRequests(object):
         proxy = kwargs.get("proxy", None)
         real_host = kwargs.get("real_host", None)
         ssl = kwargs.get("ssl", False)
+        location = kwargs.get("location", True)
 
         scheme = 'http'
         port = 80
@@ -253,6 +252,13 @@ class hackRequests(object):
             _url = "{scheme}://{host}{path}".format(scheme=scheme, host=host, path=path)
         else:
             _url = "{scheme}://{host}{path}".format(scheme=scheme, host=host + ":" + port, path=path)
+        
+        redirect = rep.msg.get('location', None)  # handle 301/302
+        if redirect and location:
+            if not redirect.startswith('http'):
+                redirect = parse.urljoin(_url, redirect)
+            return self.http(redirect, post=None, method=method, headers=headers, location=True, locationcount=1)
+
         return response(rep, _url, log, )
 
     def http(self, url, **kwargs):
@@ -287,7 +293,6 @@ class hackRequests(object):
             del headers["Content-Length"]
 
         urlinfo = scheme, host, port, path = self._get_urlinfo(url, params,real_host)
-
         log = {}
         try:
             conn = self.httpcon.get_con(urlinfo, proxy=proxy)
@@ -308,15 +313,18 @@ class hackRequests(object):
                     post = parse.urlencode(post)
                 except:
                     pass
-            else:
-                raise Exception("post must be str or dict")
-            tmp_headers["Content-Type"] = kwargs.get(
-                "Content-type", "application/x-www-form-urlencoded")
-            tmp_headers["Accept"] = tmp_headers.get("Accept", "*/*")
-        tmp_headers['Accept-Encoding'] = tmp_headers.get("Accept-Encoding", "gzip, deflate")
-        tmp_headers['Connection'] = 'close'
-        tmp_headers['User-Agent'] = tmp_headers['User-Agent'] if tmp_headers.get(
-            'User-Agent') else 'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/46.0.2490.71 Safari/537.36'
+            if "Content-Type" not in headers:
+                tmp_headers["Content-Type"] = kwargs.get(
+                    "Content-type", "application/json")
+            if 'Accept' not in headers:
+                tmp_headers["Accept"] = tmp_headers.get("Accept", "*/*")
+        if 'Accept-Encoding' not in headers:
+            tmp_headers['Accept-Encoding'] = tmp_headers.get("Accept-Encoding", "gzip, deflate")
+        if 'Connection' not in headers:
+            tmp_headers['Connection'] = 'close'
+        if 'User-Agent' not in headers:
+            tmp_headers['User-Agent'] = tmp_headers['User-Agent'] if tmp_headers.get(
+                'User-Agent') else 'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/46.0.2490.71 Safari/537.36'
 
         try:
             conn.request(method, path, post, tmp_headers)
@@ -381,7 +389,7 @@ class response(object):
             self.cookies = {}
 
         self.headers = _header_dict
-        self.header = self.rep.msg  # response header
+        self.header = str(self.rep.msg)  # response header
         self.log = log
         charset = self.rep.msg.get('content-type', 'utf-8')
         try:
