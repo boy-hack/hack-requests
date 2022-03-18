@@ -15,8 +15,6 @@ import zlib
 from http import client
 from urllib import parse
 
-from pytest import param
-
 
 class HackError(Exception):
     def __init__(self, content):
