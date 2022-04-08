@@ -14,6 +14,7 @@ import time
 import zlib
 from http import client
 from urllib import parse
+import re
 
 
 class HackError(Exception):
@@ -101,6 +102,48 @@ class httpcon(object):
         raise Exception('connect err')
 
 
+# copy from requests
+UNRESERVED_CHARS = set(
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789._-~"
+)
+SUB_DELIM_CHARS = set("!$&'()*+,;=")
+USERINFO_CHARS = UNRESERVED_CHARS | SUB_DELIM_CHARS | {":"}
+PATH_CHARS = USERINFO_CHARS | {"@", "/"}
+PERCENT_RE = re.compile(r"%[a-fA-F0-9]{2}")
+def encode_invalid_chars(component, allowed_chars, encoding="utf-8"):
+    """Percent-encodes a URI component without reapplying
+    onto an already percent-encoded component.
+    """
+    if component is None:
+        return component
+
+    # component = six.ensure_text(component)
+
+    # Normalize existing percent-encoded bytes.
+    # Try to see if the component we're encoding is already percent-encoded
+    # so we can skip all '%' characters but still encode all others.
+    component, percent_encodings = PERCENT_RE.subn(
+        lambda match: match.group(0).upper(), component
+    )
+
+    uri_bytes = component.encode("utf-8", "surrogatepass")
+    is_percent_encoded = percent_encodings == uri_bytes.count(b"%")
+    encoded_component = bytearray()
+
+    for i in range(0, len(uri_bytes)):
+        # Will return a single character bytestring on both Python 2 & 3
+        byte = uri_bytes[i : i + 1]
+        byte_ord = ord(byte)
+        if (is_percent_encoded and byte == b"%") or (
+            byte_ord < 128 and byte.decode() in allowed_chars
+        ):
+            encoded_component += byte
+            continue
+        encoded_component.extend(b"%" + (hex(byte_ord)[2:].encode().zfill(2).upper()))
+
+    return encoded_component.decode(encoding)
+
+
 class hackRequests(object):
     '''
     hackRequests是主要http请求函数。
@@ -131,7 +174,7 @@ class hackRequests(object):
         else:
             path = p.path
         if p.query:
-            path = path + "?" + p.query
+            path = path + "?" + encode_invalid_chars(p.query,PATH_CHARS)
             if query:
                 path = path + "&" + query
         elif query:
