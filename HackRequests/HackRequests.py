@@ -348,11 +348,7 @@ class hackRequests(object):
         if post:
             method = "POST"
             if isinstance(post, str):
-                # try:
-                #     post = extract_dict(post, sep="&")
-                # except:
-                #     pass
-                pass
+                post = encode_invalid_chars(post)
             elif isinstance(post,dict):
                 try:
                     post = parse.urlencode(post)
