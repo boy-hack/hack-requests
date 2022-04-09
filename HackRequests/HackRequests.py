@@ -15,6 +15,8 @@ import zlib
 from http import client
 from urllib import parse
 import re
+import time
+from datetime import timedelta
 
 
 class HackError(Exception):
@@ -151,11 +153,11 @@ class hackRequests(object):
     可以通过http或者httpraw来访问网络
     '''
 
-    def __init__(self, conpool=None):
+    def __init__(self, conpool=None,timeout=17):
         self.lock = threading.Lock()
 
         if conpool is None:
-            self.httpcon = httpcon(timeout=17)
+            self.httpcon = httpcon(timeout=timeout)
         else:
             self.httpcon = conpool
 
@@ -373,8 +375,10 @@ class hackRequests(object):
                 'User-Agent') else 'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/46.0.2490.71 Safari/537.36'
 
         try:
+            start = time.perf_counter()
             conn.request(method, path, post, tmp_headers)
             rep = conn.getresponse()
+            elapsed = time.perf_counter() - start
             # body = rep.read()
         except socket.timeout:
             raise HackError("socket connect timeout")
@@ -401,16 +405,17 @@ class hackRequests(object):
         if not redirect:
             redirect = url
         log["url"] = redirect
-        return response(rep, redirect, log, cookie)
+        return response(rep, redirect, log, cookie,timedelta(seconds=elapsed))
 
 
 class response(object):
 
-    def __init__(self, rep, redirect, log, oldcookie=''):
+    def __init__(self, rep, redirect, log, oldcookie='',elapsed = None):
         self.rep = rep
         self.status_code = self.rep.status  # response code
         self.url = redirect
         self._content = b''
+        self.elapsed = elapsed
 
         _header_dict = dict()
         self.cookie = ""
@@ -577,16 +582,16 @@ class threadpool:
 
 
 def http(url, **kwargs):
-    # timeout = kwargs.get("timeout", 10)
+    timeout = kwargs.get("timeout", 17)
     # con = httpcon(timeout=timeout)
-    hack = hackRequests()
+    hack = hackRequests(timeout=timeout)
     return hack.http(url, **kwargs)
 
 
 def httpraw(raw: str, **kwargs):
-    # con = httpcon(timeout=timeout)
+    timeout = kwargs.get("timeout", 17)
     # hack = hackRequests(con)
-    hack = hackRequests()
+    hack = hackRequests(timeout=timeout)
     return hack.httpraw(raw, **kwargs)
 
 
