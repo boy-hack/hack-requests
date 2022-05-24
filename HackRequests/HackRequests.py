@@ -14,6 +14,9 @@ import time
 import zlib
 from http import client
 from urllib import parse
+import re
+import time
+from datetime import timedelta
 
 
 class HackError(Exception):
@@ -101,6 +104,48 @@ class httpcon(object):
         raise Exception('connect err')
 
 
+# copy from requests
+UNRESERVED_CHARS = set(
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789._-~"
+)
+SUB_DELIM_CHARS = set("!$&'()*+,;=")
+USERINFO_CHARS = UNRESERVED_CHARS | SUB_DELIM_CHARS | {":"}
+PATH_CHARS = USERINFO_CHARS | {"@", "/"}
+PERCENT_RE = re.compile(r"%[a-fA-F0-9]{2}")
+def encode_invalid_chars(component, allowed_chars, encoding="utf-8"):
+    """Percent-encodes a URI component without reapplying
+    onto an already percent-encoded component.
+    """
+    if component is None:
+        return component
+
+    # component = six.ensure_text(component)
+
+    # Normalize existing percent-encoded bytes.
+    # Try to see if the component we're encoding is already percent-encoded
+    # so we can skip all '%' characters but still encode all others.
+    component, percent_encodings = PERCENT_RE.subn(
+        lambda match: match.group(0).upper(), component
+    )
+
+    uri_bytes = component.encode("utf-8", "surrogatepass")
+    is_percent_encoded = percent_encodings == uri_bytes.count(b"%")
+    encoded_component = bytearray()
+
+    for i in range(0, len(uri_bytes)):
+        # Will return a single character bytestring on both Python 2 & 3
+        byte = uri_bytes[i : i + 1]
+        byte_ord = ord(byte)
+        if (is_percent_encoded and byte == b"%") or (
+            byte_ord < 128 and byte.decode() in allowed_chars
+        ):
+            encoded_component += byte
+            continue
+        encoded_component.extend(b"%" + (hex(byte_ord)[2:].encode().zfill(2).upper()))
+
+    return encoded_component.decode(encoding)
+
+
 class hackRequests(object):
     '''
     hackRequests是主要http请求函数。
@@ -108,15 +153,15 @@ class hackRequests(object):
     可以通过http或者httpraw来访问网络
     '''
 
-    def __init__(self, conpool=None):
+    def __init__(self, conpool=None,timeout=17):
         self.lock = threading.Lock()
 
         if conpool is None:
-            self.httpcon = httpcon(timeout=17)
+            self.httpcon = httpcon(timeout=timeout)
         else:
             self.httpcon = conpool
 
-    def _get_urlinfo(self, url, realhost: str):
+    def _get_urlinfo(self, url, params: dict,realhost: str):
         p = parse.urlparse(url)
         scheme = p.scheme.lower()
         if scheme != "http" and scheme != "https":
@@ -125,11 +170,17 @@ class hackRequests(object):
         port = 80 if scheme == "http" else 443
         if ":" in hostname:
             hostname, port = hostname.split(":")
-        path = ""
-        if p.path:
+        query = parse.urlencode(params)
+        if p.path == "":
+            path = "/"
+        else:
             path = p.path
-            if p.query:
-                path = path + "?" + p.query
+        if p.query:
+            path = path + "?" + encode_invalid_chars(p.query,PATH_CHARS)
+            if query:
+                path = path + "&" + query
+        elif query:
+            path = path + "?" + query
         if realhost:
             if ":" not in realhost:
                 realhost = realhost + ":80"
@@ -144,7 +195,7 @@ class hackRequests(object):
 
         return _send_output_hook
 
-    def httpraw(self, raw: str, **kwargs):
+    def httpraw(self, raw: bytes, **kwargs):
         raw = raw.strip()
         proxy = kwargs.get("proxy", None)
         real_host = kwargs.get("real_host", None)
@@ -158,19 +209,19 @@ class hackRequests(object):
             port = 443
 
         try:
-            index = raw.index('\n')
+            index = raw.index(b'\n')
         except ValueError:
             raise Exception("ValueError")
         log = {}
         try:
-            method, path, protocol = raw[:index].split(" ")
+            method, path, protocol = raw[:index].decode().split(" ")
         except:
             raise Exception("Protocol format error")
         raw = raw[index + 1:]
 
         try:
-            host_start = raw.index("Host: ")
-            host_end = raw.index('\n', host_start)
+            host_start = raw.index(b"Host: ")
+            host_end = raw.index(b'\n', host_start)
 
         except ValueError:
             raise ValueError("Host headers not found")
@@ -180,7 +231,7 @@ class hackRequests(object):
             if ":" in real_host:
                 host, port = real_host.split(":")
         else:
-            host = raw[host_start + len("Host: "):host_end]
+            host = raw[host_start + len(b"Host: "):host_end].decode()
             if ":" in host:
                 host, port = host.split(":")
         raws = raw.splitlines()
@@ -193,20 +244,22 @@ class hackRequests(object):
 
         index = 0
         for r in raws:
-            if r == "":
+            if r == b"":
                 break
             try:
-                k, v = r.split(": ")
+                k, v = r.split(b": ")
             except:
                 k = r
-                v = ""
+                v = b""
             headers[k] = v
             index += 1
-        headers["Connection"] = "close"
+        headers[b"Connection"] = b"close"
+        if b"Content-Length" in headers:
+            headers.pop(b"Content-Length")
         if len(raws) < index + 1:
-            body = ''
+            body = b''
         else:
-            body = '\n'.join(raws[index + 1:]).lstrip()
+            body = b'\n'.join(raws[index + 1:]).lstrip()
 
         urlinfo = scheme, host, int(port), path
 
@@ -219,17 +272,17 @@ class hackRequests(object):
             conn.putrequest(method, path, skip_host=True, skip_accept_encoding=True)
             for k, v in headers.items():
                 conn.putheader(k, v)
-            if body and "Content-Length" not in headers and "Transfer-Encoding" not in headers:
+            if body and b"Content-Length" not in headers and b"Transfer-Encoding" not in headers:
                 length = conn._get_content_length(body, method)
-                conn.putheader("Content-Length", length)
+                conn.putheader(b"Content-Length", length)
             conn.endheaders()
             if body:
-                if headers.get("Transfer-Encoding", '').lower() == "chunked":
-                    body = body.replace('\r\n', '\n')
-                    body = body.replace('\n', '\r\n')
-                    body = body + "\r\n" * 2
-                log["request"] += "\r\n" + body
-                conn.send(body.encode('utf-8'))
+                if headers.get(b"Transfer-Encoding", b'').lower() == b"chunked":
+                    body = body.replace(b'\r\n', b'\n')
+                    body = body.replace(b'\n', b'\r\n')
+                    body = body + b"\r\n" * 2
+                log["request"] += "\r\n" + body.decode()
+                conn.send(body)
             rep = conn.getresponse()
         except socket.timeout:
             raise HackError("socket connect timeout")
@@ -246,13 +299,12 @@ class hackRequests(object):
             _url = "{scheme}://{host}{path}".format(scheme=scheme, host=host, path=path)
         else:
             _url = "{scheme}://{host}{path}".format(scheme=scheme, host=host + ":" + port, path=path)
-        
+
         redirect = rep.msg.get('location', None)  # handle 301/302
         if redirect and location:
             if not redirect.startswith('http'):
                 redirect = parse.urljoin(_url, redirect)
             return self.http(redirect, post=None, method=method, headers=headers, location=True, locationcount=1)
-
         return response(rep, _url, log, )
 
     def http(self, url, **kwargs):
@@ -263,7 +315,7 @@ class hackRequests(object):
 
         proxy = kwargs.get('proxy', None)
         headers = kwargs.get('headers', {})
-
+        params = kwargs.get("params", {})
         # real host:ip
         real_host = kwargs.get("real_host", None)
 
@@ -286,7 +338,8 @@ class hackRequests(object):
         if "Content-Length" in headers:
             del headers["Content-Length"]
 
-        urlinfo = scheme, host, port, path = self._get_urlinfo(url, real_host)
+        urlinfo = scheme, host, port, path = self._get_urlinfo(url, params,real_host)
+
         log = {}
         try:
             conn = self.httpcon.get_con(urlinfo, proxy=proxy)
@@ -297,17 +350,18 @@ class hackRequests(object):
         if post:
             method = "POST"
             if isinstance(post, str):
+                post = encode_invalid_chars(post)
+            elif isinstance(post,dict):
                 try:
-                    post = extract_dict(post, sep="&")
+                    post = parse.urlencode(post)
                 except:
                     pass
-            try:
-                post = parse.urlencode(post)
-            except:
-                pass
+            else:
+                raise Exception("post must be str or dict")
             if "Content-Type" not in headers:
                 tmp_headers["Content-Type"] = kwargs.get(
-                    "Content-type", "application/json")
+                    "Content-type", "application/x-www-form-urlencoded")
+
             if 'Accept' not in headers:
                 tmp_headers["Accept"] = tmp_headers.get("Accept", "*/*")
         if 'Accept-Encoding' not in headers:
@@ -319,8 +373,10 @@ class hackRequests(object):
                 'User-Agent') else 'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/46.0.2490.71 Safari/537.36'
 
         try:
+            start = time.perf_counter()
             conn.request(method, path, post, tmp_headers)
             rep = conn.getresponse()
+            elapsed = time.perf_counter() - start
             # body = rep.read()
         except socket.timeout:
             raise HackError("socket connect timeout")
@@ -347,16 +403,17 @@ class hackRequests(object):
         if not redirect:
             redirect = url
         log["url"] = redirect
-        return response(rep, redirect, log, cookie)
+        return response(rep, redirect, log, cookie,timedelta(seconds=elapsed))
 
 
 class response(object):
 
-    def __init__(self, rep, redirect, log, oldcookie=''):
+    def __init__(self, rep, redirect, log, oldcookie='',elapsed = None):
         self.rep = rep
         self.status_code = self.rep.status  # response code
         self.url = redirect
         self._content = b''
+        self.elapsed = elapsed
 
         _header_dict = dict()
         self.cookie = ""
@@ -462,6 +519,9 @@ class threadpool:
         self.isContinue = True
         self.thread_count_lock = threading.Lock()
         self._callback = callback
+    
+    def set_callback(self,callback):
+        self._callback = callback
 
     def push(self, payload):
         self.queue.put(payload)
@@ -496,10 +556,13 @@ class threadpool:
         func = self.hack.http
         self.queue.put({"func": func, "url": url, "kw": kwargs})
 
-    def httpraw(self, raw: str, ssl: bool = False, proxy=None, location=True):
+    def httpraw(self, raw: str, ssl: bool = False, proxy=None, location=True,real_host=None):
         func = self.hack.httpraw
-        self.queue.put({"func": func, "raw": raw, "ssl": ssl,
-                        "proxy": proxy, "location": location})
+        params = {"func": func, "raw": raw, "ssl": ssl,
+                        "proxy": proxy, "location": location}
+        if real_host != None:
+            params.update({"real_host":real_host})
+        self.queue.put(params)
 
     def scan(self):
         while 1:
@@ -523,16 +586,16 @@ class threadpool:
 
 
 def http(url, **kwargs):
-    # timeout = kwargs.get("timeout", 10)
+    timeout = kwargs.get("timeout", 17)
     # con = httpcon(timeout=timeout)
-    hack = hackRequests()
+    hack = hackRequests(timeout=timeout)
     return hack.http(url, **kwargs)
 
 
 def httpraw(raw: str, **kwargs):
-    # con = httpcon(timeout=timeout)
+    timeout = kwargs.get("timeout", 17)
     # hack = hackRequests(con)
-    hack = hackRequests()
+    hack = hackRequests(timeout=timeout)
     return hack.httpraw(raw, **kwargs)
 
 

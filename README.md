@@ -1,4 +1,12 @@
+# 魔改增加功能：
+
+1. 为 `hackRequests.http()` / `http()` 增加了个 `params` 参数，支持传入 dict 形式的 query string（像 requests 一样）
+2. 为  `hackRequests.http()` / `http()` 增加了个 `timeout` 参数 ，这样写时间盲注之类的脚本的时候会方便一点
+3. 增加了个 `encode_invalid_chars()` 函数，这样 url 当中的非法字符就会被 urlencode 
+4. 给 `response` 类增加了一个 `elapsed`  ，通过调用 `resp.elapsed.total_seconds()` 能获得一次请求所用的时间，主要也是为了写盲注之类的脚本方便
+
 # hack-requests
+
 HackRequests 是基于`Python3.x`的一个给黑客们使用的http底层网络库。如果你需要一个不那么臃肿而且像requests一样优雅的设计，并且提供底层请求包/返回包原文来方便你进行下一步分析，如果你使用Burp Suite，可以将原始报文直接复制重放，对于大量的HTTP请求，hack-requests线程池也能帮你实现最快速的响应。
 
 - 像requests一样好用的设计
@@ -244,5 +252,4 @@ threadpool.run()
 | httpraw() | 见[说明文档]-[快速使用] | 将HTTP请求后加入现成队列，准备执行 |
 | stop()    |                         | 停止线程池                         |
 | run()     |                         | 启动线程池                         |
-
 
