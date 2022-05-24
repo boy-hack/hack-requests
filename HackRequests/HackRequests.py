@@ -195,7 +195,7 @@ class hackRequests(object):
 
         return _send_output_hook
 
-    def httpraw(self, raw: str, **kwargs):
+    def httpraw(self, raw: bytes, **kwargs):
         raw = raw.strip()
         proxy = kwargs.get("proxy", None)
         real_host = kwargs.get("real_host", None)
@@ -209,19 +209,19 @@ class hackRequests(object):
             port = 443
 
         try:
-            index = raw.index('\n')
+            index = raw.index(b'\n')
         except ValueError:
             raise Exception("ValueError")
         log = {}
         try:
-            method, path, protocol = raw[:index].split(" ")
+            method, path, protocol = raw[:index].decode().split(" ")
         except:
             raise Exception("Protocol format error")
         raw = raw[index + 1:]
 
         try:
-            host_start = raw.index("Host: ")
-            host_end = raw.index('\n', host_start)
+            host_start = raw.index(b"Host: ")
+            host_end = raw.index(b'\n', host_start)
 
         except ValueError:
             raise ValueError("Host headers not found")
@@ -231,7 +231,7 @@ class hackRequests(object):
             if ":" in real_host:
                 host, port = real_host.split(":")
         else:
-            host = raw[host_start + len("Host: "):host_end]
+            host = raw[host_start + len(b"Host: "):host_end].decode()
             if ":" in host:
                 host, port = host.split(":")
         raws = raw.splitlines()
@@ -244,20 +244,22 @@ class hackRequests(object):
 
         index = 0
         for r in raws:
-            if r == "":
+            if r == b"":
                 break
             try:
-                k, v = r.split(": ")
+                k, v = r.split(b": ")
             except:
                 k = r
-                v = ""
+                v = b""
             headers[k] = v
             index += 1
-        headers["Connection"] = "close"
+        headers[b"Connection"] = b"close"
+        if b"Content-Length" in headers:
+            headers.pop(b"Content-Length")
         if len(raws) < index + 1:
-            body = ''
+            body = b''
         else:
-            body = '\n'.join(raws[index + 1:]).lstrip()
+            body = b'\n'.join(raws[index + 1:]).lstrip()
 
         urlinfo = scheme, host, int(port), path
 
@@ -270,17 +272,17 @@ class hackRequests(object):
             conn.putrequest(method, path, skip_host=True, skip_accept_encoding=True)
             for k, v in headers.items():
                 conn.putheader(k, v)
-            if body and "Content-Length" not in headers and "Transfer-Encoding" not in headers:
+            if body and b"Content-Length" not in headers and b"Transfer-Encoding" not in headers:
                 length = conn._get_content_length(body, method)
-                conn.putheader("Content-Length", length)
+                conn.putheader(b"Content-Length", length)
             conn.endheaders()
             if body:
-                if headers.get("Transfer-Encoding", '').lower() == "chunked":
-                    body = body.replace('\r\n', '\n')
-                    body = body.replace('\n', '\r\n')
-                    body = body + "\r\n" * 2
-                log["request"] += "\r\n" + body
-                conn.send(body.encode('utf-8'))
+                if headers.get(b"Transfer-Encoding", b'').lower() == b"chunked":
+                    body = body.replace(b'\r\n', b'\n')
+                    body = body.replace(b'\n', b'\r\n')
+                    body = body + b"\r\n" * 2
+                log["request"] += "\r\n" + body.decode()
+                conn.send(body)
             rep = conn.getresponse()
         except socket.timeout:
             raise HackError("socket connect timeout")
@@ -517,6 +519,9 @@ class threadpool:
         self.isContinue = True
         self.thread_count_lock = threading.Lock()
         self._callback = callback
+    
+    def set_callback(self,callback):
+        self._callback = callback
 
     def push(self, payload):
         self.queue.put(payload)
@@ -551,10 +556,13 @@ class threadpool:
         func = self.hack.http
         self.queue.put({"func": func, "url": url, "kw": kwargs})
 
-    def httpraw(self, raw: str, ssl: bool = False, proxy=None, location=True):
+    def httpraw(self, raw: str, ssl: bool = False, proxy=None, location=True,real_host=None):
         func = self.hack.httpraw
-        self.queue.put({"func": func, "raw": raw, "ssl": ssl,
-                        "proxy": proxy, "location": location})
+        params = {"func": func, "raw": raw, "ssl": ssl,
+                        "proxy": proxy, "location": location}
+        if real_host != None:
+            params.update({"real_host":real_host})
+        self.queue.put(params)
 
     def scan(self):
         while 1:
