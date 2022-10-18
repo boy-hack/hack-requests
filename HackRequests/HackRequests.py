@@ -218,6 +218,8 @@ class hackRequests(object):
         try:
             conn.putrequest(method, path, skip_host=True, skip_accept_encoding=True)
             for k, v in headers.items():
+                if k == "Content-Length":
+                    v = conn._get_content_length(body, method)
                 conn.putheader(k, v)
             if body and "Content-Length" not in headers and "Transfer-Encoding" not in headers:
                 length = conn._get_content_length(body, method)
