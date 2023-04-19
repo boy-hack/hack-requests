@@ -496,10 +496,10 @@ class threadpool:
         func = self.hack.http
         self.queue.put({"func": func, "url": url, "kw": kwargs})
 
-    def httpraw(self, raw: str, ssl: bool = False, proxy=None, location=True):
+    def httpraw(self, raw: str, ssl: bool = False, proxy=None, location=True,real_host=None):
         func = self.hack.httpraw
         self.queue.put({"func": func, "raw": raw, "ssl": ssl,
-                        "proxy": proxy, "location": location})
+                        "proxy": proxy, "location": location, "real_host":real_host})
 
     def scan(self):
         while 1:
