@@ -163,13 +163,14 @@ class hackRequests(object):
             raise Exception("ValueError")
         log = {}
         try:
-            method, path, protocol = raw[:index].split(" ")
+            firstline_arr = raw[:index].split(" ")
+            method, path, protocol = firstline_arr[0], ''.join(firstline_arr[1:-1]), firstline_arr[-1]
         except:
             raise Exception("Protocol format error")
         raw = raw[index + 1:]
 
         try:
-            host_start = raw.index("Host: ")
+            host_start = raw.lower().index("host: ")
             host_end = raw.index('\n', host_start)
 
         except ValueError:
